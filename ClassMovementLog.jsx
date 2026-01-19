@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { LogOut, LogIn, FileText, CheckCircle, ChevronLeft, Settings, Users, Plus, Trash2, Save, School, ArrowRight, CheckSquare, Square, AlertCircle, AlertTriangle, UserX, Calendar, PenTool, User, Monitor, X, Download, Upload, Database } from 'lucide-react';
+import { 
+  LogOut, LogIn, FileText, CheckCircle, ChevronLeft, Settings, Users, Plus, 
+  Trash2, Save, School, ArrowRight, CheckSquare, Square, AlertCircle, 
+  AlertTriangle, UserX, Calendar, PenTool, User, Monitor, X, Download, 
+  Upload, Database, BarChart3, PieChart, CalendarRange, Lock, Clock, 
+  CalendarDays, Timer, AlertOctagon, Printer 
+} from 'lucide-react';
 
 // --- 辅助函数：智能拆分中英文名字 ---
 const parseName = (fullName) => {
@@ -17,16 +23,47 @@ const parseName = (fullName) => {
   return { cn, my };
 };
 
-// --- 辅助函数：生成全校默认班级数据 ---
+// --- 辅助函数：生成全校默认班级数据 (Dynamic Year) ---
 const generateDefaultClasses = () => {
+  const currentYear = new Date().getFullYear();
+  
+  // 学校班级结构
   const structure = [
-    { level: 1, classes: ['A', 'B', 'C', 'D', 'E'] },
-    { level: 2, classes: ['A', 'B', 'C', 'D', 'E'] },
-    { level: 3, classes: ['A', 'B', 'C', 'D', 'E'] },
-    { level: 4, classes: ['A', 'B', 'C', 'D'] },
-    { level: 5, classes: ['A', 'B', 'C', 'D', 'E'] },
-    { level: 6, classes: ['A', 'B', 'C'] },
+    { level: 1, classes: ['A', 'B', 'C', 'D', 'E'] }, // 5班
+    { level: 2, classes: ['A', 'B', 'C', 'D', 'E'] }, // 5班
+    { level: 3, classes: ['A', 'B', 'C', 'D', 'E'] }, // 5班
+    { level: 4, classes: ['A', 'B', 'C', 'D'] },      // 4班
+    { level: 5, classes: ['A', 'B', 'C', 'D', 'E'] }, // 5班
+    { level: 6, classes: ['A', 'B', 'C'] },           // 3班
+  ]; // 总计 27 班
+
+  // 老师名单 (共27位)
+  const teachers = [
+    "En Tan Hau Vind 陈皓运师", "En Yap Min Yan 叶民彦师", "Cik Ong Wen Jing 王文静师", "Pn Lee Yoke Yean 李育燕师", "Cik Oi Swee Chien 黄翠涓师",
+    "Pn Rinny Seah Kwee Jean 佘桂仁师", "En Chong Cheng Yang 张政扬师", "Pn Tan Hui Kee 陈惠琪师", "Cik Nabila Binti Suhaimi", "Pn Chin Lee Mei 陈丽美师",
+    "Pn Chiam Ai Ying 詹爱莹师", "En Winson Eng Wei Siang 黄伟祥师", "Cik Leong Siew Fern 梁筱芬师", "Cik Lim Sie Pei 林诗佩师", "Cik Tan Lee Ching 陈丽清师",
+    "En Lim Kian Pin 林建品师", "En Willson Lim 林伟胜师", "Cik Lim Hui Ying 林卉颖师", "Cik Tay Sue Ching 郑淑琴师", "Pn Ngu Ling Houng 吴霖芳师",
+    "Cik Heng Wui Sing 邢伟芯师", "Pn Koo Cheng Yee 古倩仪师", "Pn Ng Dong Yu 黄董宇师", "En Tan Sik Hong 陈实丰师", "Pn Lee Siow Mee 李晓梅师",
+    "Pn Cher Ruey Ming 曹瑞敏师", "Pn Chua Chea Leng 蔡静玲师"
   ];
+
+  // 老师名单对应的班级顺序 (3A-6C, 然后 1A-2E)
+  const teacherClassOrder = [
+    '3A', '3B', '3C', '3D', '3E', // 0-4
+    '4A', '4B', '4C', '4D',       // 5-8
+    '5A', '5B', '5C', '5D', '5E', // 9-13
+    '6A', '6B', '6C',             // 14-16
+    '1A', '1B', '1C', '1D', '1E', // 17-21
+    '2A', '2B', '2C', '2D', '2E'  // 22-26
+  ];
+
+  // 建立班级->老师的映射表
+  const teacherMap = {};
+  teacherClassOrder.forEach((cls, index) => {
+    if (teachers[index]) {
+      teacherMap[cls] = teachers[index];
+    }
+  });
 
   const students1A = [
       "Aidan Liew 廖伟健", "Chong Wei Han 张伟汉", "Nurul Aisyah", "Siti Aminah", 
@@ -37,13 +74,17 @@ const generateDefaultClasses = () => {
   ];
 
   let allClasses = [];
+
   structure.forEach(grade => {
     grade.classes.forEach(cls => {
       const className = `${grade.level}${cls}`;
+      // 从映射表中查找对应的老师
+      const teacherName = teacherMap[className] || 'Guru Kelas';
+      
       allClasses.push({
-        id: className.toLowerCase() + '_2026',
-        name: `${className} (2026)`,
-        teacher: className === '1A' ? 'Lim Hui Ying' : 'Guru Kelas',
+        id: `${className.toLowerCase()}_${currentYear}`,
+        name: `${className} (${currentYear})`,
+        teacher: teacherName,
         students: className === '1A' ? students1A : []
       });
     });
@@ -58,6 +99,16 @@ const REASONS = [
   { id: 'pejabat', label: '办公室', labelMy: 'Pejabat', icon: '🏢', color: 'bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100 hover:border-purple-400' },
   { id: 'guru', label: '见老师', labelMy: 'Jumpa Guru', icon: '👩‍🏫', color: 'bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100 hover:border-orange-400' },
   { id: 'lain', label: '其他', labelMy: 'Lain-lain', icon: '❓', color: 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 hover:border-slate-400' }
+];
+
+// --- 新增：其他原因的预设选项 ---
+const PRESET_OTHER_REASONS = [
+  { label: '图书馆', labelMy: 'Perpustakaan', icon: '📚' },
+  { label: '辅导室', labelMy: 'Bilik Kaunseling', icon: '🛋️' },
+  { label: '医疗室', labelMy: 'Bilik Sakit', icon: '🚑' },
+  { label: '食堂', labelMy: 'Kantin', icon: '🍽️' },
+  { label: '装水/洗手', labelMy: 'Isi Air/Basuh', icon: '🚰' },
+  { label: '拿东西', labelMy: 'Ambil Barang', icon: '🎒' },
 ];
 
 const UserAvatar = ({ name, size = "md", active = false }) => {
@@ -83,7 +134,7 @@ const UserAvatar = ({ name, size = "md", active = false }) => {
   );
 };
 
-export default function SchoolLogSystem() {
+export default function App() {
   const [classes, setClasses] = useState(DEFAULT_CLASSES);
   const [activeClassId, setActiveClassId] = useState(null); 
   const [view, setView] = useState('landing'); 
@@ -101,6 +152,9 @@ export default function SchoolLogSystem() {
   const [adminPasswordInput, setAdminPasswordInput] = useState('');
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [editingClass, setEditingClass] = useState(null); 
+  const [statsView, setStatsView] = useState('monthly'); // 'monthly', 'yearly'
+  const [statsTab, setStatsTab] = useState('overview'); // 'overview', 'time', 'duration', 'day'
+  const [isExamMode, setIsExamMode] = useState(false); // New: Exam Mode
 
   useEffect(() => {
     try {
@@ -108,18 +162,17 @@ export default function SchoolLogSystem() {
       const savedLogs = localStorage.getItem('school_logs');
       const savedAttendance = localStorage.getItem('school_attendance');
       const savedAssignedIds = localStorage.getItem('device_assigned_class_ids');
-      const oldSingleId = localStorage.getItem('device_assigned_class_id'); // 兼容旧数据
+      const savedExamMode = localStorage.getItem('school_exam_mode');
       
       if (savedClasses) setClasses(JSON.parse(savedClasses));
       else setClasses(DEFAULT_CLASSES);
 
       if (savedLogs) setLogs(JSON.parse(savedLogs));
       if (savedAttendance) setAttendanceData(JSON.parse(savedAttendance));
+      if (savedExamMode) setIsExamMode(JSON.parse(savedExamMode));
       
       if (savedAssignedIds) {
         setAssignedClassIds(JSON.parse(savedAssignedIds));
-      } else if (oldSingleId) {
-        setAssignedClassIds([oldSingleId]);
       }
     } catch (error) {
       console.error("Failed to load data", error);
@@ -131,13 +184,14 @@ export default function SchoolLogSystem() {
   useEffect(() => { localStorage.setItem('school_classes', JSON.stringify(classes)); }, [classes]);
   useEffect(() => { localStorage.setItem('school_logs', JSON.stringify(logs)); }, [logs]);
   useEffect(() => { localStorage.setItem('school_attendance', JSON.stringify(attendanceData)); }, [attendanceData]);
+  useEffect(() => { localStorage.setItem('school_exam_mode', JSON.stringify(isExamMode)); }, [isExamMode]);
   useEffect(() => { 
     localStorage.setItem('device_assigned_class_ids', JSON.stringify(assignedClassIds));
-    localStorage.removeItem('device_assigned_class_id');
   }, [assignedClassIds]);
 
   const getActiveClass = () => classes.find(c => c.id === activeClassId);
-  const formatTime = (dateObj) => dateObj ? new Date(dateObj).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '-';
+  // --- Modified: 12-hour format ---
+  const formatTime = (dateObj) => dateObj ? new Date(dateObj).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '-';
   const formatDate = (dateObj) => new Date(dateObj).toLocaleDateString('en-GB');
   const getTodayString = () => new Date().toLocaleDateString('en-CA'); 
   const getCurrentAbsentees = (classId) => {
@@ -168,12 +222,12 @@ export default function SchoolLogSystem() {
         setGlobalModal({ type: 'alert', title: '密码错误 / Ralat', message: '密码不正确，请重试。\nKata laluan salah, sila cuba lagi.' });
       }
     } catch (e) {
-      setGlobalModal({ type: 'alert', title: '系统错误', message: '验证过程出错，请确保使用现代浏览器。' });
+      setGlobalModal({ type: 'alert', title: '系统错误', message: '验证过程出错，请确保使用现代浏览器（HTTPS环境）。' });
     }
   };
 
   const handleExportData = () => {
-    const data = { classes, logs, attendanceData, assignedClassIds, backupDate: new Date().toISOString() };
+    const data = { classes, logs, attendanceData, assignedClassIds, isExamMode, backupDate: new Date().toISOString() };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -184,25 +238,20 @@ export default function SchoolLogSystem() {
     document.body.removeChild(a);
   };
 
-  // 优化：增加导出单个班级历史记录为 CSV 的功能
   const handleExportClassLogsCSV = () => {
     const cls = getActiveClass();
     if (!cls) return;
     const classLogs = logs.filter(log => log.classId === activeClassId);
-    
-    // CSV Header
     let csvContent = "Date,Name,Time Out,Time In,Reason,Duration (Min)\n";
-    
     classLogs.forEach(log => {
       const duration = log.timeIn ? Math.round((new Date(log.timeIn) - new Date(log.timeOut)) / 1000 / 60) : '';
-      // 处理名字中可能包含的逗号
       const safeName = `"${log.name}"`;
       const reason = log.reasonDisplay || log.reason;
       const row = `${formatDate(log.date)},${safeName},${formatTime(log.timeOut)},${formatTime(log.timeIn) || 'Still Out'},"${reason}",${duration}`;
       csvContent += row + "\n";
     });
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    // Add BOM for Excel UTF-8 compatibility
+    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -224,6 +273,7 @@ export default function SchoolLogSystem() {
         if (data.logs) setLogs(data.logs);
         if (data.attendanceData) setAttendanceData(data.attendanceData);
         if (data.assignedClassIds) setAssignedClassIds(data.assignedClassIds);
+        if (data.isExamMode !== undefined) setIsExamMode(data.isExamMode);
         setGlobalModal({ type: 'alert', title: '恢复成功 / Berjaya', message: '数据已成功恢复！\nData berjaya dipulihkan.', onConfirm: () => window.location.reload() });
       } catch (err) {
         setGlobalModal({ type: 'alert', title: '错误 / Ralat', message: '文件格式错误！\nFormat fail salah!', isDanger: true });
@@ -245,26 +295,13 @@ export default function SchoolLogSystem() {
           if (cleanParts.length === 0) return null;
           const rowStr = cleanParts.join(' ').toLowerCase();
           
-          if ((rowStr.includes('bil') && rowStr.includes('nama')) || 
-              (rowStr.includes('no') && rowStr.includes('name')) ||
-              (rowStr.includes('nama') && rowStr.includes('姓名')) || 
-              rowStr === 'nama' || rowStr === 'name' || rowStr === '姓名' || 
-              rowStr.includes('senarai murid') || rowStr.includes('student list')) {
-            return null;
-          }
+          if ((rowStr.includes('bil') && rowStr.includes('nama')) || rowStr.includes('name') || rowStr.includes('姓名')) return null;
 
           let mixedName = null, cnName = null, myName = null;
           const isHeaderOrIrrelevant = (str) => {
              const s = str.toLowerCase();
              if (/^[\d\s\-\.\/]+$/.test(s) || s.length < 2) return true;
-             const keywords = [
-               'bil', 'no', 'id', 'kod', 'code', 'name', 'nama', 'murid', 'student', 'catatan', 'remark', 'note',
-               'class', 'kelas', 'darjah', 'tingkatan', 'year', 'tahun', 'jantina', 'gender', 'jan', 'sex', 
-               'lelaki', 'perempuan', 'male', 'female', 'agama', 'kaum', 'race', 'religion', 'tarikh', 'date', 
-               'lahir', 'birth', 'mykid', 'kp', 'ic', 'warganegara', 'citizen',
-               '姓名', '名字', '学生', '学生姓名', '性别', '班级', '编号', '学号', '备注', '注释', '身份证', '种族', '宗教', '出生日期'
-             ];
-             return keywords.some(k => s === k || s.startsWith(k + ' ') || s === k + '.');
+             return ['bil','no','id','name','nama','catatan'].some(k => s.startsWith(k));
           };
 
           for (const part of cleanParts) {
@@ -286,9 +323,9 @@ export default function SchoolLogSystem() {
         const currentStudents = editingClass.students || [];
         const uniqueStudents = [...new Set([...currentStudents, ...newStudents])];
         setEditingClass({ ...editingClass, students: uniqueStudents });
-        setGlobalModal({ type: 'alert', title: '导入成功 / Berjaya', message: `成功识别并导入 ${newStudents.length} 个名字。\nBerjaya import ${newStudents.length} nama.`, confirmText: '好的 / OK' });
+        setGlobalModal({ type: 'alert', title: '导入成功', message: `成功导入 ${newStudents.length} 个名字。`, confirmText: 'OK' });
       } else {
-        setGlobalModal({ type: 'alert', title: '无法导入 / Gagal', message: '未能识别出有效的名字。\nTiada nama yang sah ditemui.', isDanger: true });
+        setGlobalModal({ type: 'alert', title: '无法导入', message: '未能识别出有效的名字。', isDanger: true });
       }
     };
     reader.readAsText(file);
@@ -302,7 +339,7 @@ export default function SchoolLogSystem() {
   };
 
   const handleDeleteClass = (id) => {
-    setGlobalModal({ type: 'confirm', title: '删除班级 / Padam Kelas', message: '确定要删除这个班级吗？所有记录将丢失。\nPadam kelas ini?', confirmText: '删除 / Padam', cancelText: '取消 / Batal', isDanger: true, onConfirm: () => { setClasses(prev => prev.filter(c => c.id !== id)); setAssignedClassIds(prev => prev.filter(assignedId => assignedId !== id)); }});
+    setGlobalModal({ type: 'confirm', title: '删除班级', message: '确定要删除这个班级吗？所有记录将丢失。', confirmText: '删除', isDanger: true, onConfirm: () => { setClasses(prev => prev.filter(c => c.id !== id)); setAssignedClassIds(prev => prev.filter(assignedId => assignedId !== id)); }});
   };
 
   const handleSaveClass = (updatedClass) => {
@@ -315,7 +352,7 @@ export default function SchoolLogSystem() {
   const handleSaveAttendance = (absentList) => {
     const today = getTodayString();
     setAttendanceData(prev => ({ ...prev, [activeClassId]: { date: today, absent: absentList } }));
-    setGlobalModal({ type: 'alert', title: '保存成功 / Berjaya', message: '今日缺席名单已更新。\nSenarai kehadiran telah dikemaskini.', confirmText: '好的 / OK', onConfirm: () => setView('dashboard') });
+    setGlobalModal({ type: 'alert', title: '保存成功', message: '今日缺席名单已更新。', confirmText: 'OK', onConfirm: () => setView('dashboard') });
   };
 
   const toggleTempAbsent = (name) => {
@@ -325,7 +362,7 @@ export default function SchoolLogSystem() {
 
   const toggleStudentSelection = (name) => {
     const isOut = logs.find(log => log.classId === activeClassId && log.name === name && !log.timeIn);
-    if (isOut) { setGlobalModal({ type: 'alert', title: '无法选择 / Tidak Boleh', message: `${name} 已经在外面了\n${name} sudah berada di luar.` }); return; }
+    if (isOut) { setGlobalModal({ type: 'alert', title: '无法选择', message: `${name} 已经在外面了` }); return; }
     if (selectedOutStudents.includes(name)) setSelectedOutStudents(prev => prev.filter(n => n !== name));
     else setSelectedOutStudents(prev => [...prev, name]);
   };
@@ -363,7 +400,7 @@ export default function SchoolLogSystem() {
 
   const handleBatchReturn = () => {
     if (selectedReturnIds.length === 0) return;
-    setGlobalModal({ type: 'confirm', title: '确认回来 / Sahkan Masuk', message: `确认让选中的 ${selectedReturnIds.length} 名学生回来吗？\nSahkan ${selectedReturnIds.length} murid masuk?`, confirmText: '确认 / Ya', onConfirm: () => {
+    setGlobalModal({ type: 'confirm', title: '确认回来', message: `确认让选中的 ${selectedReturnIds.length} 名学生回来吗？`, confirmText: '确认', onConfirm: () => {
         const updatedLogs = logs.map(log => { if (selectedReturnIds.includes(log.id)) return { ...log, timeIn: new Date().toISOString() }; return log; });
         setLogs(updatedLogs);
         setSelectedReturnIds([]); 
@@ -377,7 +414,7 @@ export default function SchoolLogSystem() {
   };
 
   const handleClearHistory = () => {
-    setGlobalModal({ type: 'confirm', title: '清除记录 / Padam Rekod', message: '确定要清除本班所有记录吗？\nPadam rekod kelas ini?', confirmText: '清除 / Padam', isDanger: true, onConfirm: () => { setLogs(prev => prev.filter(l => l.classId !== activeClassId)); }});
+    setGlobalModal({ type: 'confirm', title: '清除记录', message: '确定要清除本班所有记录吗？', confirmText: '清除', isDanger: true, onConfirm: () => { setLogs(prev => prev.filter(l => l.classId !== activeClassId)); }});
   }
 
   const handleAssignClass = (classId) => { if (!classId || assignedClassIds.includes(classId)) return; setAssignedClassIds([...assignedClassIds, classId]); };
@@ -414,7 +451,37 @@ export default function SchoolLogSystem() {
              <h3 className="text-3xl font-bold text-slate-800 mb-2">具体原因 (可选)</h3>
              <p className="text-xl text-slate-500">Sebab Lain (Pilihan)</p>
            </div>
-           <input autoFocus type="text" value={customReasonText} onChange={(e) => setCustomReasonText(e.target.value)} placeholder="例如：去图书馆 / Contoh: Ke Perpustakaan" className="w-full p-5 text-xl bg-slate-50 border-2 border-slate-200 rounded-2xl mb-8 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all" onKeyDown={(e) => { if (e.key === 'Enter') submitCustomReason(); }} />
+           
+           {/* --- 新增：预设选项区域 --- */}
+           <div className="grid grid-cols-2 gap-3 mb-6">
+             {PRESET_OTHER_REASONS.map((preset) => (
+               <button
+                 key={preset.label}
+                 onClick={() => {
+                   const lainReasonObj = REASONS.find(r => r.id === 'lain');
+                   executeExit(lainReasonObj, `${preset.label} / ${preset.labelMy}`);
+                 }}
+                 className="p-3 bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 rounded-xl flex items-center gap-3 transition-all text-left group active:scale-95"
+               >
+                 <span className="text-2xl group-hover:scale-110 transition-transform">{preset.icon}</span>
+                 <div>
+                   <div className="font-bold text-slate-700 text-sm leading-tight">{preset.label}</div>
+                   <div className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">{preset.labelMy}</div>
+                 </div>
+               </button>
+             ))}
+           </div>
+
+           <div className="relative mb-6">
+             <div className="absolute inset-0 flex items-center">
+               <div className="w-full border-t border-slate-200"></div>
+             </div>
+             <div className="relative flex justify-center text-xs">
+               <span className="px-2 bg-white text-slate-400 font-bold uppercase tracking-wider">或手动输入 / Atau taip manual</span>
+             </div>
+           </div>
+
+           <input autoFocus type="text" value={customReasonText} onChange={(e) => setCustomReasonText(e.target.value)} placeholder="例如：去拿书 / Contoh: Ambil Buku" className="w-full p-5 text-xl bg-slate-50 border-2 border-slate-200 rounded-2xl mb-8 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all" onKeyDown={(e) => { if (e.key === 'Enter') submitCustomReason(); }} />
            <button onClick={submitCustomReason} className="w-full py-4 rounded-2xl font-bold text-xl text-white bg-blue-600 hover:bg-blue-700 shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2">确定 / Sahkan</button>
            <button onClick={() => { setShowCustomReasonInput(false); setCustomReasonText(''); }} className="w-full mt-4 py-3 text-slate-400 font-medium hover:text-slate-600">取消 / Batal</button>
         </div>
@@ -484,8 +551,31 @@ export default function SchoolLogSystem() {
       </div>
       <div className="flex-grow p-8 overflow-y-auto">
         {!editingClass && (
-          <div className="bg-white max-w-4xl mx-auto rounded-3xl shadow-sm border border-slate-100 p-8 mb-8">
-            <div className="flex items-start gap-4 mb-8 border-b border-slate-100 pb-8">
+          <div className="bg-white max-w-4xl mx-auto rounded-3xl shadow-sm border border-slate-100 p-8 mb-8 space-y-8">
+            {/* New: System Control */}
+             <div className="flex items-start gap-4 border-b border-slate-100 pb-8">
+              <div className="bg-red-50 p-3 rounded-full text-red-600"><Lock size={32} /></div>
+              <div className="flex-grow">
+                <h3 className="text-xl font-bold text-slate-800 mb-1">系统控制</h3>
+                <p className="text-slate-500 text-sm mb-4">全局控制系统功能，如考试模式等。</p>
+                <div className="flex items-center justify-between bg-slate-50 p-4 rounded-xl border border-slate-200">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isExamMode ? 'bg-red-500 text-white' : 'bg-slate-200 text-slate-400'}`}>
+                      <AlertOctagon size={24} />
+                    </div>
+                    <div>
+                      <div className="font-bold text-slate-800">考试模式 / Mod Peperiksaan</div>
+                      <div className="text-sm text-slate-500">开启后将禁止学生外出。</div>
+                    </div>
+                  </div>
+                  <button onClick={() => setIsExamMode(!isExamMode)} className={`px-6 py-2 rounded-lg font-bold transition-all ${isExamMode ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>
+                    {isExamMode ? '已开启 / ON' : '已关闭 / OFF'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-4 border-b border-slate-100 pb-8">
               <div className="bg-blue-50 p-3 rounded-full text-blue-600"><Save size={32} /></div>
               <div className="flex-grow">
                 <h3 className="text-xl font-bold text-slate-800 mb-1">数据备份与恢复</h3>
@@ -529,7 +619,7 @@ export default function SchoolLogSystem() {
         {editingClass ? (
           <div className="bg-white max-w-3xl mx-auto rounded-3xl shadow-sm border border-slate-100 p-8">
             <h3 className="text-2xl font-bold mb-6 text-slate-800">编辑班级</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div><label className="block text-sm font-bold text-slate-500 mb-2">班级名称</label><input value={editingClass.name} onChange={e => setEditingClass({...editingClass, name: e.target.value})} className="w-full p-3 border-2 border-slate-200 rounded-xl font-bold text-lg focus:border-blue-500 outline-none" /></div>
               <div><label className="block text-sm font-bold text-slate-500 mb-2">班主任</label><input value={editingClass.teacher} onChange={e => setEditingClass({...editingClass, teacher: e.target.value})} className="w-full p-3 border-2 border-slate-200 rounded-xl font-bold text-lg focus:border-blue-500 outline-none" /></div>
             </div>
@@ -592,6 +682,7 @@ export default function SchoolLogSystem() {
              <div>
                <div className="flex items-center gap-2 mb-1">
                  <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-0.5 rounded-full">新廊华小</span>
+                 {isExamMode && <span className="bg-red-100 text-red-600 text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1 animate-pulse"><AlertOctagon size={12}/> 考试进行中</span>}
                </div>
                <h1 className="text-3xl font-bold text-slate-800">{cls.name}</h1>
                <div className="flex items-center gap-2 text-slate-500">
@@ -617,7 +708,8 @@ export default function SchoolLogSystem() {
             <div className="h-10 w-px bg-slate-200 hidden md:block"></div>
             <div className="text-right">
               <div className="text-5xl font-mono font-bold text-blue-600 tracking-tight">
-                {currentTime.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' })}
+                {/* --- Modified: 12-hour format in Clock --- */}
+                {currentTime.toLocaleTimeString('en-US', { hour12: true, hour: 'numeric', minute: '2-digit' })}
               </div>
               <div className="text-slate-400 font-medium text-sm mt-1">
                 {currentTime.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}
@@ -627,21 +719,37 @@ export default function SchoolLogSystem() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-grow overflow-y-auto lg:overflow-hidden">
-          <div className="bg-white rounded-3xl shadow-lg border-2 border-blue-50 p-8 flex flex-col justify-center items-center space-y-8 relative overflow-hidden group hover:border-blue-300 transition-all cursor-pointer select-none"
-               onClick={() => { setSelectedOutStudents([]); setView('select-student'); }}>
-            <div className="absolute top-0 right-0 p-10 opacity-5 group-hover:opacity-10 transition-opacity">
-              <LogOut size={240} className="text-blue-600" />
-            </div>
-            <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-8 rounded-full shadow-2xl transform group-hover:scale-110 group-active:scale-95 transition-all duration-300">
-              <LogOut size={80} />
-            </div>
-            <div className="text-center z-10">
-              <h2 className="text-5xl font-black text-slate-800 mb-3 tracking-tight">我要出去</h2>
-              <p className="text-2xl text-slate-500 font-medium">Saya Hendak Keluar</p>
-            </div>
-            <div className="w-full max-w-md bg-blue-50 text-blue-600 py-3 rounded-2xl text-center font-bold animate-pulse">
-              点击这里 / Tekan Sini
-            </div>
+          {/* Exam Mode Lock Logic */}
+          <div className={`bg-white rounded-3xl shadow-lg border-2 p-8 flex flex-col justify-center items-center space-y-8 relative overflow-hidden group transition-all select-none ${isExamMode ? 'border-slate-200 grayscale cursor-not-allowed' : 'border-blue-50 hover:border-blue-300 cursor-pointer'}`}
+               onClick={() => { if (!isExamMode) { setSelectedOutStudents([]); setView('select-student'); } }}>
+            {isExamMode ? (
+              <>
+                 <div className="bg-slate-100 text-slate-400 p-8 rounded-full shadow-inner mb-4">
+                    <Lock size={80} />
+                 </div>
+                 <div className="text-center z-10">
+                   <h2 className="text-4xl font-black text-slate-500 mb-3 tracking-tight">考试进行中</h2>
+                   <p className="text-xl text-slate-400 font-medium">Peperiksaan Sedang Dijalankan</p>
+                   <p className="text-sm text-red-400 mt-4 font-bold">外出功能已锁定 / Dikunci</p>
+                 </div>
+              </>
+            ) : (
+              <>
+                <div className="absolute top-0 right-0 p-10 opacity-5 group-hover:opacity-10 transition-opacity">
+                  <LogOut size={240} className="text-blue-600" />
+                </div>
+                <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-8 rounded-full shadow-2xl transform group-hover:scale-110 group-active:scale-95 transition-all duration-300">
+                  <LogOut size={80} />
+                </div>
+                <div className="text-center z-10">
+                  <h2 className="text-5xl font-black text-slate-800 mb-3 tracking-tight">我要出去</h2>
+                  <p className="text-2xl text-slate-500 font-medium">Saya Hendak Keluar</p>
+                </div>
+                <div className="w-full max-w-md bg-blue-50 text-blue-600 py-3 rounded-2xl text-center font-bold animate-pulse">
+                  点击这里 / Tekan Sini
+                </div>
+              </>
+            )}
           </div>
 
           <div className="bg-slate-50 rounded-3xl border border-slate-200 p-6 flex flex-col relative overflow-hidden h-[500px] lg:h-auto">
@@ -675,11 +783,19 @@ export default function SchoolLogSystem() {
                    const displayReason = log.reasonDisplay || (reasonObj ? reasonObj.label : log.reason);
                    const isSelected = selectedReturnIds.includes(log.id);
                    const { cn, my } = parseName(log.name);
+                   
+                   // Auto Alert Logic: > 15 minutes
+                   const durationMs = new Date() - new Date(log.timeOut);
+                   const isOvertime = durationMs > 15 * 60 * 1000;
 
                    return (
                     <div key={log.id} onClick={() => toggleReturnSelection(log.id)}
                       className={`relative border-2 rounded-2xl p-4 shadow-sm flex justify-between items-center transition-all cursor-pointer select-none group ${
-                        isSelected ? 'bg-blue-50 border-blue-500 ring-2 ring-blue-200 z-10' : 'bg-white border-transparent hover:border-slate-300 hover:shadow-md'
+                        isSelected 
+                        ? 'bg-blue-50 border-blue-500 ring-2 ring-blue-200 z-10' 
+                        : isOvertime 
+                          ? 'bg-red-50 border-red-300 animate-pulse' // Flashing red for overtime
+                          : 'bg-white border-transparent hover:border-slate-300 hover:shadow-md'
                       }`}
                     >
                       <div className="flex items-center gap-4 overflow-hidden">
@@ -690,12 +806,14 @@ export default function SchoolLogSystem() {
                            </div>
                         </div>
                         <div className="min-w-0">
-                          <h3 className={`text-xl font-bold truncate ${isSelected ? 'text-blue-800' : 'text-slate-800'}`}>
-                            {cn ? cn : my}
-                          </h3>
-                          <div className={`font-medium flex items-center gap-2 text-md ${isSelected ? 'text-blue-600' : 'text-slate-500'}`}>
+                          {cn && <div className={`text-lg font-black leading-none mb-0.5 truncate ${isSelected ? 'text-blue-800' : isOvertime ? 'text-red-800' : 'text-slate-800'}`}>{cn}</div>}
+                          <div className={`font-bold truncate leading-tight ${isSelected ? 'text-blue-700' : isOvertime ? 'text-red-600' : cn ? 'text-sm text-slate-500' : 'text-lg text-slate-800'}`}>
+                            {my || log.name}
+                          </div>
+                          <div className={`font-medium flex items-center gap-2 text-md mt-1 ${isSelected ? 'text-blue-600' : isOvertime ? 'text-red-500' : 'text-slate-500'}`}>
                             <span className="bg-slate-100 px-2 py-0.5 rounded text-sm text-slate-600 shrink-0">{displayReason}</span>
                             <span className="text-red-400 font-mono text-sm shrink-0">{formatTime(log.timeOut)}</span>
+                            {isOvertime && <span className="text-xs font-bold bg-red-100 px-2 py-0.5 rounded flex items-center gap-1"><AlertTriangle size={10}/> 很久</span>}
                           </div>
                         </div>
                       </div>
@@ -722,10 +840,14 @@ export default function SchoolLogSystem() {
           </div>
         </div>
         
-        <div className="flex justify-center pt-2 shrink-0">
-          <button onClick={() => setView('history')} className="text-slate-400 hover:text-slate-600 flex items-center gap-2 px-6 py-3 rounded-full hover:bg-white hover:shadow-sm transition-all">
+        <div className="flex justify-center pt-2 gap-4 shrink-0">
+          <button onClick={() => setView('history')} className="text-slate-400 hover:text-slate-600 flex items-center gap-2 px-6 py-3 rounded-full hover:bg-white hover:shadow-sm transition-all font-medium">
             <FileText size={20} />
             查看完整记录
+          </button>
+          <button onClick={() => setView('statistics')} className="text-blue-400 hover:text-blue-600 flex items-center gap-2 px-6 py-3 rounded-full hover:bg-white hover:shadow-sm transition-all font-medium">
+            <BarChart3 size={20} />
+            统计分析 / Analisis
           </button>
         </div>
 
@@ -878,7 +1000,9 @@ export default function SchoolLogSystem() {
             </div>
           </div>
           <div className="flex gap-2">
-            {/* 新增：导出当前班级记录 */}
+            <button onClick={() => window.print()} className="text-sm bg-blue-500/20 hover:bg-blue-500 text-blue-200 hover:text-white px-4 py-2 rounded-xl transition-all font-bold flex items-center gap-1">
+               <Printer size={16}/> 打印
+            </button>
             <button onClick={handleExportClassLogsCSV} className="text-sm bg-green-500/20 hover:bg-green-500 text-green-200 hover:text-white px-4 py-2 rounded-xl transition-all font-bold flex items-center gap-1">
               <Download size={16} /> 导出
             </button>
@@ -928,6 +1052,320 @@ export default function SchoolLogSystem() {
     );
   };
 
+  const renderAttendance = () => {
+    const cls = getActiveClass();
+    if (!cls) return null;
+    const absentees = getCurrentAbsentees(cls.id);
+    const tempSet = new Set(tempAbsentees);
+
+    return (
+      <div className="h-full flex flex-col bg-white rounded-3xl shadow-lg overflow-hidden animate-in fade-in duration-300">
+        <div className="bg-slate-800 text-white p-6 flex justify-between items-center shrink-0">
+          <div className="flex items-center gap-4">
+            <button onClick={() => setView('dashboard')} className="bg-slate-700 hover:bg-slate-600 p-2 rounded-xl transition-colors">
+              <ChevronLeft size={24} />
+            </button>
+            <div>
+              <h2 className="text-xl font-bold">每日点名</h2>
+              <p className="text-slate-400 text-sm">Kehadiran Murid - {cls.name}</p>
+            </div>
+          </div>
+          <button onClick={() => handleSaveAttendance(tempAbsentees)} className="bg-green-600 hover:bg-green-700 px-6 py-2 rounded-xl font-bold shadow-lg transition-transform active:scale-95 flex items-center gap-2">
+            <Save size={20} /> 保存 / Simpan
+          </button>
+        </div>
+        
+        <div className="bg-blue-50 p-4 text-center text-blue-800 text-sm font-medium">
+          请点击 <span className="text-red-600 font-bold">缺席</span> 的学生 / Sila tekan murid yang <span className="text-red-600 font-bold">TIDAK HADIR</span>
+        </div>
+
+        <div className="flex-grow overflow-y-auto p-6 custom-scrollbar">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {cls.students.map(name => {
+              const isAbsent = tempSet.has(name);
+              const { cn, my } = parseName(name);
+              
+              return (
+                <button key={name} onClick={() => toggleTempAbsent(name)}
+                  className={`p-4 rounded-2xl text-left border-2 transition-all active:scale-95 flex items-center gap-3 relative overflow-hidden ${
+                    isAbsent 
+                      ? 'bg-red-50 border-red-500 ring-2 ring-red-200' 
+                      : 'bg-white border-slate-100 hover:border-blue-300'
+                  }`}
+                >
+                  <UserAvatar name={name} active={isAbsent} />
+                  <div className="min-w-0">
+                    {cn && <div className={`text-lg font-black leading-none mb-1 truncate ${isAbsent ? 'text-red-800' : 'text-slate-800'}`}>{cn}</div>}
+                    <div className={`font-bold truncate text-sm ${isAbsent ? 'text-red-600' : 'text-slate-500'}`}>
+                        {my || name}
+                    </div>
+                    {isAbsent && <span className="text-xs font-bold bg-red-100 text-red-600 px-2 py-0.5 rounded inline-block mt-2">缺席 / TH</span>}
+                  </div>
+                  {isAbsent && <div className="absolute top-2 right-2 text-red-500"><CheckSquare size={20} /></div>}
+                  {!isAbsent && <div className="absolute top-2 right-2 text-slate-200"><Square size={20} /></div>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderStatistics = () => {
+    const cls = getActiveClass();
+    const classLogs = logs.filter(log => log.classId === activeClassId);
+
+    // Filter Logic based on Time Scope
+    const filteredLogs = classLogs; // Can extend to filter by date range later
+
+    // --- Aggregation Logic ---
+    const agg = {
+      overview: {}, // By Date (Month/Year)
+      timeOfDay: {}, // By Hour
+      dayOfWeek: {}, // By Day (Mon, Tue...)
+      duration: { total: 0, count: 0, longOut: [] } // Duration stats
+    };
+
+    filteredLogs.forEach(log => {
+      const date = new Date(log.date);
+      const timeOut = new Date(log.timeOut);
+      
+      // 1. Overview (Existing)
+      let key, label, labelMy;
+      if (statsView === 'monthly') {
+        key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        label = date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long' });
+        labelMy = date.toLocaleDateString('ms-MY', { year: 'numeric', month: 'long' });
+      } else {
+        key = `${date.getFullYear()}`;
+        label = `${key} 年`;
+        labelMy = `Tahun ${key}`;
+      }
+      if (!agg.overview[key]) agg.overview[key] = { label, labelMy, total: 0, reasons: {}, students: {} };
+      agg.overview[key].total++;
+      const rId = log.reasonId || 'lain';
+      agg.overview[key].reasons[rId] = (agg.overview[key].reasons[rId] || 0) + 1;
+      agg.overview[key].students[log.name] = (agg.overview[key].students[log.name] || 0) + 1;
+
+      // 2. Time of Day
+      const hour = timeOut.getHours();
+      const timeLabel = `${String(hour).padStart(2,'0')}:00`;
+      if (!agg.timeOfDay[timeLabel]) agg.timeOfDay[timeLabel] = 0;
+      agg.timeOfDay[timeLabel]++;
+
+      // 3. Day of Week
+      const days = ['周日/Ahad', '周一/Isnin', '周二/Selasa', '周三/Rabu', '周四/Khamis', '周五/Jumaat', '周六/Sabtu'];
+      const dayLabel = days[date.getDay()];
+      if (!agg.dayOfWeek[dayLabel]) agg.dayOfWeek[dayLabel] = 0;
+      agg.dayOfWeek[dayLabel]++;
+
+      // 4. Duration
+      if (log.timeIn) {
+        const dur = (new Date(log.timeIn) - timeOut) / 1000 / 60; // mins
+        agg.duration.total += dur;
+        agg.duration.count++;
+        if (dur > 20) { // Consider > 20 mins as "long"
+           agg.duration.longOut.push({ ...log, duration: Math.round(dur) });
+        }
+      }
+    });
+
+    const sortedOverviewKeys = Object.keys(agg.overview).sort().reverse();
+    const sortedTimeKeys = Object.keys(agg.timeOfDay).sort();
+    // Fixed: Added Sunday and Saturday so weekend data is visible
+    const sortedDayKeys = ['周日/Ahad', '周一/Isnin', '周二/Selasa', '周三/Rabu', '周四/Khamis', '周五/Jumaat', '周六/Sabtu'];
+
+    return (
+      <div className="h-full flex flex-col bg-white rounded-3xl shadow-lg overflow-hidden animate-in fade-in duration-300">
+        <div className="bg-slate-800 text-white p-6 flex flex-col md:flex-row justify-between items-center shrink-0 gap-4">
+          <div className="flex items-center gap-4 w-full md:w-auto">
+            <button onClick={() => setView('dashboard')} className="bg-slate-700 hover:bg-slate-600 p-2 rounded-xl transition-colors">
+              <ChevronLeft size={24} />
+            </button>
+            <div>
+              <h2 className="text-xl font-bold">统计分析</h2>
+              <p className="text-slate-400 text-sm">Analisis Statistik - {cls?.name}</p>
+            </div>
+          </div>
+          
+          <div className="flex gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0">
+             {/* Sub Tabs */}
+             <button onClick={() => setStatsTab('overview')} className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 whitespace-nowrap ${statsTab === 'overview' ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>
+               <BarChart3 size={16}/> 概览
+             </button>
+             <button onClick={() => setStatsTab('time')} className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 whitespace-nowrap ${statsTab === 'time' ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>
+               <Clock size={16}/> 时段
+             </button>
+             <button onClick={() => setStatsTab('day')} className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 whitespace-nowrap ${statsTab === 'day' ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>
+               <CalendarDays size={16}/> 星期
+             </button>
+             <button onClick={() => setStatsTab('duration')} className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 whitespace-nowrap ${statsTab === 'duration' ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>
+               <Timer size={16}/> 时长
+             </button>
+          </div>
+        </div>
+
+        {/* --- Content Area --- */}
+        <div className="flex-grow overflow-auto p-6 custom-scrollbar bg-slate-50">
+           {filteredLogs.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60">
+                 <BarChart3 size={60} className="mb-4 text-slate-300" />
+                 <p className="text-xl font-bold">暂无统计数据</p>
+                 <p>Tiada data statistik</p>
+              </div>
+           ) : (
+             <>
+               {/* Tab: Overview (Existing) */}
+               {statsTab === 'overview' && (
+                 <>
+                    <div className="flex justify-end mb-6">
+                      <div className="bg-white p-1 rounded-xl flex shadow-sm border border-slate-200">
+                        <button onClick={() => setStatsView('monthly')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${statsView === 'monthly' ? 'bg-slate-100 text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}>月度</button>
+                        <button onClick={() => setStatsView('yearly')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${statsView === 'yearly' ? 'bg-slate-100 text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}>年度</button>
+                      </div>
+                    </div>
+                    {sortedOverviewKeys.length === 0 ? (
+                      <div className="text-center text-slate-400 mt-20"><BarChart3 size={48} className="mx-auto mb-2 opacity-50"/>暂无数据</div>
+                    ) : (
+                      <div className="space-y-6">
+                        {sortedOverviewKeys.map(key => {
+                            const data = agg.overview[key];
+                            const sortedStudents = Object.entries(data.students).sort((a,b) => b[1] - a[1]).slice(0, 3);
+                            return (
+                              <div key={key} className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+                                 <div className="flex justify-between items-end mb-6 border-b border-slate-100 pb-4">
+                                    <div><h3 className="text-2xl font-bold text-slate-800">{data.label}</h3><p className="text-slate-500 text-sm">{data.labelMy}</p></div>
+                                    <div className="text-right"><div className="text-4xl font-black text-blue-600">{data.total}</div><div className="text-xs text-slate-400 font-bold uppercase">Total</div></div>
+                                 </div>
+                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                      <h4 className="font-bold text-slate-700 mb-3 text-sm flex items-center gap-2"><PieChart size={16}/> 原因分布</h4>
+                                      <div className="space-y-2">{REASONS.map(r => (<div key={r.id} className="flex items-center text-xs"><div className="w-20 text-slate-500">{r.label}</div><div className="flex-grow bg-slate-100 h-2 rounded-full overflow-hidden"><div className="bg-blue-500 h-full" style={{width: `${(data.reasons[r.id]||0)/data.total*100}%`}}></div></div><div className="w-8 text-right font-bold text-slate-700">{data.reasons[r.id]||0}</div></div>))}</div>
+                                    </div>
+                                    <div>
+                                      <h4 className="font-bold text-slate-700 mb-3 text-sm flex items-center gap-2"><Users size={16}/> 高频学生</h4>
+                                      <div className="space-y-2">{sortedStudents.map(([name, count], i) => (<div key={name} className="flex justify-between items-center text-xs bg-slate-50 p-2 rounded"><span className="font-bold text-slate-700 truncate max-w-[150px]">{i+1}. {name}</span><span className="font-bold text-blue-600">{count}次</span></div>))}</div>
+                                    </div>
+                                 </div>
+                              </div>
+                            );
+                        })}
+                      </div>
+                    )}
+                 </>
+               )}
+
+               {/* Tab: Time of Day */}
+               {statsTab === 'time' && (
+                 <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 min-h-[400px]">
+                   <h3 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2"><Clock className="text-blue-500"/> 时段分析 (Time Analysis)</h3>
+                   <div className="flex items-end gap-4 h-64 mt-10 overflow-x-auto pb-4">
+                     {sortedTimeKeys.map(time => {
+                       const count = agg.timeOfDay[time];
+                       const max = Math.max(...Object.values(agg.timeOfDay));
+                       const height = `${(count / max) * 100}%`;
+                       
+                       // --- Modified: 12-hour format for Chart Labels ---
+                       const [h] = time.split(':');
+                       const hourInt = parseInt(h, 10);
+                       const ampm = hourInt >= 12 ? 'PM' : 'AM';
+                       const hour12 = hourInt % 12 || 12;
+                       const displayTime = `${hour12} ${ampm}`;
+
+                       return (
+                         <div key={time} className="flex flex-col items-center group w-16 shrink-0">
+                           <div className="relative w-full flex justify-center h-full items-end">
+                             <div className="w-full bg-blue-100 rounded-t-lg group-hover:bg-blue-200 transition-colors relative" style={{ height: height }}>
+                               <div className="absolute -top-8 left-1/2 -translate-x-1/2 font-bold text-blue-600">{count}</div>
+                             </div>
+                           </div>
+                           <div className="mt-2 text-sm font-bold text-slate-500 whitespace-nowrap">{displayTime}</div>
+                         </div>
+                       );
+                     })}
+                   </div>
+                   <p className="text-center text-slate-400 mt-4 text-sm">显示每个小时的离开人次</p>
+                 </div>
+               )}
+
+               {/* Tab: Day of Week */}
+               {statsTab === 'day' && (
+                  <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 min-h-[400px]">
+                    <h3 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2"><CalendarDays className="text-green-500"/> 星期趋势 (Day Trends)</h3>
+                    <div className="space-y-4 mt-8">
+                      {sortedDayKeys.map(day => {
+                        const count = agg.dayOfWeek[day] || 0;
+                        const max = Math.max(...Object.values(agg.dayOfWeek), 1); // Avoid div by 0
+                        const width = `${(count / max) * 100}%`;
+                        return (
+                          <div key={day} className="flex items-center gap-4">
+                            <div className="w-24 font-bold text-slate-600 text-sm text-right">{day.split('/')[0]}</div>
+                            <div className="flex-grow bg-slate-100 h-8 rounded-full overflow-hidden relative">
+                               <div className="h-full bg-green-500 rounded-full flex items-center justify-end px-3 text-white font-bold text-xs transition-all duration-500" style={{ width: width }}>
+                                 {count > 0 && count}
+                               </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+               )}
+
+               {/* Tab: Duration */}
+               {statsTab === 'duration' && (
+                 <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                       <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 flex flex-col items-center justify-center py-10">
+                          <div className="bg-orange-50 p-4 rounded-full text-orange-500 mb-4"><Timer size={40}/></div>
+                          <div className="text-5xl font-black text-slate-800 mb-1">
+                            {agg.duration.count > 0 ? Math.round(agg.duration.total / agg.duration.count) : 0} <span className="text-xl font-medium text-slate-400">min</span>
+                          </div>
+                          <div className="text-slate-500 font-bold">平均外出时长 / Purata Masa</div>
+                       </div>
+                       <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 flex flex-col items-center justify-center py-10">
+                          <div className="bg-red-50 p-4 rounded-full text-red-500 mb-4"><AlertOctagon size={40}/></div>
+                          <div className="text-5xl font-black text-slate-800 mb-1">
+                            {agg.duration.longOut.length} <span className="text-xl font-medium text-slate-400">次</span>
+                          </div>
+                          <div className="text-slate-500 font-bold">超时记录 ({'>'}20分钟)</div>
+                       </div>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
+                       <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><Settings className="text-slate-400"/> 超时详情列表</h4>
+                       <div className="overflow-x-auto">
+                         <table className="w-full text-left text-sm">
+                           <thead className="bg-slate-50 text-slate-500">
+                             <tr><th className="p-3 rounded-l-lg">学生</th><th className="p-3">原因</th><th className="p-3">时间</th><th className="p-3 rounded-r-lg">时长</th></tr>
+                           </thead>
+                           <tbody className="divide-y divide-slate-100">
+                             {agg.duration.longOut.length === 0 ? (
+                               <tr><td colSpan={4} className="p-4 text-center text-slate-400">暂无超时记录，表现很好！</td></tr>
+                             ) : (
+                               agg.duration.longOut.map(l => (
+                                 <tr key={l.id}>
+                                   <td className="p-3 font-bold text-slate-700">{l.name}</td>
+                                   <td className="p-3 text-slate-500">{l.reasonDisplay || l.reason}</td>
+                                   <td className="p-3 text-slate-400">{formatDate(l.date)}</td>
+                                   <td className="p-3 font-bold text-red-500">{l.duration} min</td>
+                                 </tr>
+                               ))
+                             )}
+                           </tbody>
+                         </table>
+                       </div>
+                    </div>
+                 </div>
+               )}
+             </>
+           )}
+        </div>
+      </div>
+    );
+  }
+
   // --- 主渲染 ---
   return (
     <div className="bg-slate-200 h-screen w-full p-4 md:p-6 font-sans select-none overflow-hidden">
@@ -939,6 +1377,7 @@ export default function SchoolLogSystem() {
         {view === 'select-reason' && renderSelectReason()}
         {view === 'history' && renderHistory()}
         {view === 'attendance' && renderAttendance()}
+        {view === 'statistics' && renderStatistics()}
         {renderGlobalModal()}
         {renderCustomReasonModal()}
       </div>
