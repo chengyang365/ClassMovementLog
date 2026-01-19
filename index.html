@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>电子出入记录系统</title>
+    <!-- 添加这一行：使用 SVG 渲染 Emoji -->
+    <link rel="icon" type="image/png" sizes="32x32" href="https://em-content.zobj.net/source/apple/419/door_1f6aa.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="https://em-content.zobj.net/source/apple/419/door_1f6aa.png">
+    <link rel="apple-touch-icon" href="https://em-content.zobj.net/source/apple/419/door_1f6aa.png">
     
     <!-- 1. 核心库 (CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -357,7 +361,7 @@
                     <div className="flex flex-col items-center justify-center h-full bg-slate-50 relative animate-in fade-in">
                         <div className="absolute top-6 right-6 z-10"><button onClick={() => setShowAdminLogin(true)} className="flex items-center gap-2 text-slate-400 hover:text-blue-600 transition-colors bg-white/50 px-4 py-2 rounded-full backdrop-blur-sm"><Icon name="settings" size={20} /> <span className="text-sm font-medium">系统管理</span></button></div>
                         <div className="text-center mb-12 z-10">
-                            <div className="bg-gradient-to-br from-blue-500 to-blue-700 w-28 h-28 rounded-3xl mx-auto flex items-center justify-center text-white mb-6 shadow-xl rotate-3 transform hover:rotate-6 transition-transform"><Icon name="school" size={56} /></div>
+                            <img src="./logo.png" className="w-28 h-28 mx-auto mb-6 shadow-xl rounded-3xl rotate-3 transform hover:rotate-6 transition-transform object-contain bg-white" alt="校徽" />
                             <h1 className="text-5xl font-black text-slate-800 mb-2 tracking-tight">新廊华小</h1>
                             <p className="text-2xl text-slate-500 tracking-wide font-medium">电子出入记录系统 / Sistem Rekod Keluar Masuk Murid</p>
                         </div>
