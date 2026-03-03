@@ -41,7 +41,7 @@
         .chart-container { position: relative; width: 100%; height: 300px; max-height: 400px; margin: auto; }
     </style>
 </head>
-<body class="bg-slate-200 text-slate-800 h-screen w-full overflow-hidden p-4 md:p-6 font-sans select-none">
+<body class="bg-slate-200 text-slate-800 h-screen w-full overflow-hidden p-2 sm:p-4 md:p-6 font-sans select-none">
 
     <div id="root" class="w-full h-full"></div>
 
@@ -49,20 +49,24 @@
     <script type="text/babel">
         const { useState, useEffect, useRef, memo } = React;
 
-        // --- 优化组件：独立时钟 (防止全屏重绘) ---
+        // ==========================================
+        // ⚠️ 请在这里填入您的 Google Apps Script URL
+        // ==========================================
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxYXYBnU5uzfzkM_F71KFxQyeTcNOTEeuQQaY6wgVmDCa5Leu0b_zZk5E5uC26vGD4pXQ/exec"; 
+
+        // --- 独立时钟组件 ---
         const DigitalClock = memo(() => {
             const [time, setTime] = useState(new Date());
             useEffect(() => {
                 const timer = setInterval(() => setTime(new Date()), 1000);
                 return () => clearInterval(timer);
             }, []);
-
             return (
-                <div className="text-right">
-                    <div className="text-5xl font-mono font-bold text-blue-600 tracking-tight">
+                <div className="text-right shrink-0">
+                    <div className="text-2xl sm:text-4xl md:text-5xl font-mono font-bold text-blue-600 tracking-tight">
                         {time.toLocaleTimeString('en-US', { hour12: true, hour: 'numeric', minute: '2-digit' })}
                     </div>
-                    <div className="text-slate-400 font-medium text-sm mt-1">
+                    <div className="text-slate-400 font-medium text-[10px] sm:text-xs md:text-sm mt-0 sm:mt-1">
                         {time.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}
                     </div>
                 </div>
@@ -89,7 +93,16 @@
             return <span ref={containerRef} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}></span>;
         };
 
-        // --- 数据常量 ---
+        // --- 辅助函数 ---
+        const parseName = (fullName) => {
+            if (!fullName) return { cn: '', my: '' };
+            const cnMatch = fullName.match(/[\u4e00-\u9fa5]+/g);
+            const cn = cnMatch ? cnMatch.join('') : '';
+            const my = fullName.replace(/[\u4e00-\u9fa5]+/g, '').replace(/[()（）]/g, '').replace(/\s+/g, ' ').trim();
+            return { cn, my };
+        };
+
+        // --- 核心配置 ---
         const TEACHERS = [
             "En Tan Hau Vind 陈皓运师", "En Yap Min Yan 叶民彦师", "Cik Ong Wen Jing 王文静师", "Pn Lee Yoke Yean 李育燕师", "Cik Oi Swee Chien 黄翠涓师",
             "Pn Rinny Seah Kwee Jean 佘桂仁师", "En Chong Cheng Yang 张政扬师", "Pn Tan Hui Kee 陈惠琪师", "Cik Nabila Binti Suhaimi", "Pn Chin Lee Mei 陈丽美师",
@@ -99,6 +112,7 @@
             "Pn Cher Ruey Ming 曹瑞敏师", "Pn Chua Chea Leng 蔡静玲师"
         ];
         const TEACHER_CLASS_ORDER = ['3A', '3B', '3C', '3D', '3E', '4A', '4B', '4C', '4D', '5A', '5B', '5C', '5D', '5E', '6A', '6B', '6C', '1A', '1B', '1C', '1D', '1E', '2A', '2B', '2C', '2D', '2E'];
+        
         const REASONS = [
             { id: 'tandas', label: '厕所', labelMy: 'Tandas', icon: '🚽', color: 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 hover:border-blue-400' },
             { id: 'pejabat', label: '办公室', labelMy: 'Pejabat', icon: '🏢', color: 'bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100 hover:border-purple-400' },
@@ -113,15 +127,6 @@
             { label: '装水/洗手', labelMy: 'Isi Air/Basuh', icon: '🚰' },
             { label: '拿东西', labelMy: 'Ambil Barang', icon: '🎒' }
         ];
-
-        // --- 辅助函数 ---
-        const parseName = (fullName) => {
-            if (!fullName) return { cn: '', my: '' };
-            const cnMatch = fullName.match(/[\u4e00-\u9fa5]+/g);
-            const cn = cnMatch ? cnMatch.join('') : '';
-            const my = fullName.replace(/[\u4e00-\u9fa5]+/g, '').replace(/[()（）]/g, '').replace(/\s+/g, ' ').trim();
-            return { cn, my };
-        };
 
         const generateDefaultClasses = () => {
             const currentYear = new Date().getFullYear();
@@ -145,18 +150,33 @@
 
         const DEFAULT_CLASSES = generateDefaultClasses();
 
+        // --- 云端同步函数 ---
+        const syncToCloud = (payload) => {
+            if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("YOUR_SCRIPT_URL_HERE")) return;
+            fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors', 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).catch(err => console.error("Cloud Sync Error:", err));
+        };
+
         // --- 组件: UserAvatar ---
         const UserAvatar = ({ name, size = "md", active = false }) => {
             const { cn, my } = parseName(name);
-            let initials = "";
+            let initials = "?";
             if (my && my.length > 0) initials = my.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase();
             else if (cn && cn.length > 0) initials = cn[0];
-            else initials = "?";
             const colorIndex = name.length % 6;
             const colors = ['bg-red-100 text-red-600', 'bg-orange-100 text-orange-600', 'bg-amber-100 text-amber-600', 'bg-green-100 text-green-600', 'bg-blue-100 text-blue-600', 'bg-indigo-100 text-indigo-600'];
-            const sizeClass = size === "lg" ? "w-14 h-14 text-xl" : "w-10 h-10 text-sm";
+            
+            // 更精细的响应式尺寸控制
+            let sizeClass = "w-10 h-10 text-sm";
+            if (size === "lg") sizeClass = "w-10 h-10 sm:w-12 sm:h-12 text-sm sm:text-lg";
+            if (size === "sm") sizeClass = "w-8 h-8 text-xs";
+            
             const colorClass = active ? "bg-white/20 text-white" : colors[colorIndex];
-            return <div className={`${sizeClass} ${colorClass} rounded-full flex items-center justify-center font-bold shrink-0 border-2 border-white/50 shadow-sm`}>{initials}</div>;
+            return <div className={`${sizeClass} ${colorClass} rounded-full flex items-center justify-center font-bold shrink-0 shadow-sm transition-all`}>{initials}</div>;
         };
 
         // --- 主 App 组件 ---
@@ -168,11 +188,13 @@
             const [attendanceData, setAttendanceData] = useState({}); 
             const [tempAbsentees, setTempAbsentees] = useState([]); 
             const [assignedClassIds, setAssignedClassIds] = useState([]); 
+            
+            // 核心状态：选中的学生
             const [selectedOutStudents, setSelectedOutStudents] = useState([]); 
             const [selectedReturnIds, setSelectedReturnIds] = useState([]); 
+            
             const [showCustomReasonInput, setShowCustomReasonInput] = useState(false);
             const [customReasonText, setCustomReasonText] = useState('');
-            const [confirmReturnId, setConfirmReturnId] = useState(null); 
             const [globalModal, setGlobalModal] = useState(null); 
             const [adminPasswordInput, setAdminPasswordInput] = useState('');
             const [showAdminLogin, setShowAdminLogin] = useState(false);
@@ -185,16 +207,12 @@
             useEffect(() => {
                 try {
                     const savedClasses = localStorage.getItem('school_classes');
-                    const savedLogs = localStorage.getItem('school_logs');
-                    const savedAttendance = localStorage.getItem('school_attendance');
-                    const savedAssignedIds = localStorage.getItem('device_assigned_class_ids');
-                    const savedExamMode = localStorage.getItem('school_exam_mode');
                     if (savedClasses) setClasses(JSON.parse(savedClasses)); else setClasses(DEFAULT_CLASSES);
-                    if (savedLogs) setLogs(JSON.parse(savedLogs));
-                    if (savedAttendance) setAttendanceData(JSON.parse(savedAttendance));
-                    if (savedExamMode) setIsExamMode(JSON.parse(savedExamMode));
-                    if (savedAssignedIds) setAssignedClassIds(JSON.parse(savedAssignedIds));
-                } catch (error) { console.error("Failed to load data", error); }
+                    const savedLogs = localStorage.getItem('school_logs'); if(savedLogs) setLogs(JSON.parse(savedLogs));
+                    const savedAtt = localStorage.getItem('school_attendance'); if(savedAtt) setAttendanceData(JSON.parse(savedAtt));
+                    const savedIds = localStorage.getItem('device_assigned_class_ids'); if(savedIds) setAssignedClassIds(JSON.parse(savedIds));
+                    const savedExam = localStorage.getItem('school_exam_mode'); if(savedExam) setIsExamMode(JSON.parse(savedExam));
+                } catch (error) { console.error("Load Error", error); }
             }, []);
 
             // 数据保存
@@ -210,118 +228,200 @@
             const getTodayString = () => new Date().toLocaleDateString('en-CA'); 
             const getCurrentAbsentees = (classId) => { const record = attendanceData[classId]; return (record && record.date === getTodayString()) ? (record.absent || []) : []; };
 
+            // --- 核心逻辑 ---
+            const fetchStudentsFromCloud = async () => {
+                if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("YOUR_SCRIPT_URL_HERE")) return setGlobalModal({ type: 'alert', title: '未设置 URL', message: '请在代码中填入 Google Apps Script URL', isDanger: true });
+                setGlobalModal({ type: 'alert', title: '同步中...', message: '正在从 Google Sheet 下载学生名单...\nSedang memuat turun senarai nama...' });
+                
+                try {
+                    const res = await fetch(GOOGLE_SCRIPT_URL); 
+                    const cloudData = await res.json();
+                    if(cloudData.error) throw new Error(cloudData.error);
+                    const newClasses = classes.map(c => {
+                        const shortName = c.name.split(' ')[0];
+                        const cloudList = cloudData[shortName];
+                        if (cloudList && Array.isArray(cloudList)) { return { ...c, students: cloudList }; }
+                        return c;
+                    });
+                    setClasses(newClasses);
+                    setGlobalModal({ type: 'alert', title: '成功 / Berjaya', message: '学生名单已更新！\nSenarai murid telah dikemaskini.', confirmText: 'OK' });
+                } catch (e) {
+                    setGlobalModal({ type: 'alert', title: '失败 / Gagal', message: '同步失败，请检查网络或 Sheet 设置。\n' + e.message, isDanger: true });
+                }
+            };
+
             const handleEnterClass = (classId) => { setActiveClassId(classId); setSelectedOutStudents([]); setSelectedReturnIds([]); setView('dashboard'); };
-            const handleAdminLogin = async () => { if (adminPasswordInput === "1234") { setView('admin'); setShowAdminLogin(false); setAdminPasswordInput(''); } else { setGlobalModal({ type: 'alert', title: '密码错误 / Ralat', message: '密码不正确，请重试。\nKata laluan salah.' }); } };
-            const handleExportData = () => { const data = { classes, logs, attendanceData, assignedClassIds, isExamMode, backupDate: new Date().toISOString() }; const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `SJKC_Log_Backup_${getTodayString()}.json`; document.body.appendChild(a); a.click(); document.body.removeChild(a); };
-            const handleExportClassLogsCSV = () => { const cls = getActiveClass(); if (!cls) return; const classLogs = logs.filter(log => log.classId === activeClassId); let csvContent = "Date,Name,Time Out,Time In,Reason,Duration (Min)\n"; classLogs.forEach(log => { const duration = log.timeIn ? Math.round((new Date(log.timeIn) - new Date(log.timeOut)) / 1000 / 60) : ''; const safeName = `"${log.name}"`; const reason = log.reasonDisplay || log.reason; const row = `${formatDate(log.date)},${safeName},${formatTime(log.timeOut)},${formatTime(log.timeIn) || 'Still Out'},"${reason}",${duration}`; csvContent += row + "\n"; }); const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `${cls.name}_Logs_${getTodayString()}.csv`; document.body.appendChild(a); a.click(); document.body.removeChild(a); };
+            const handleAdminLogin = () => { if (adminPasswordInput === "1234") { setView('admin'); setShowAdminLogin(false); setAdminPasswordInput(''); } else { setGlobalModal({ type: 'alert', title: 'Error', message: 'Wrong Password.' }); } };
             
-            const handleImportData = (event) => { const file = event.target.files[0]; if (!file) return; if(!window.confirm("警告：恢复备份将覆盖当前所有数据！\nAwas: Data semasa akan diganti!")) { event.target.value = ''; return; } const reader = new FileReader(); reader.onload = (e) => { try { const data = JSON.parse(e.target.result); if (data.classes) setClasses(data.classes); if (data.logs) setLogs(data.logs); if (data.attendanceData) setAttendanceData(data.attendanceData); if (data.assignedClassIds) setAssignedClassIds(data.assignedClassIds); if (data.isExamMode !== undefined) setIsExamMode(data.isExamMode); setGlobalModal({ type: 'alert', title: '恢复成功 / Berjaya', message: '数据已成功恢复！', onConfirm: () => window.location.reload() }); } catch (err) { setGlobalModal({ type: 'alert', title: '错误 / Ralat', message: '文件格式错误！', isDanger: true }); } }; reader.readAsText(file); };
+            // 优化：点选学生
+            const toggleStudentSelection = (name) => {
+                const isOut = logs.find(log => log.classId === activeClassId && log.name === name && !log.timeIn);
+                if(isOut) return; // Ignore clicks on already out students
+                if(selectedOutStudents.includes(name)) setSelectedOutStudents(prev => prev.filter(n => n !== name));
+                else setSelectedOutStudents(prev => [...prev, name]);
+            };
             
-            // --- 修复 CSV 导入表头识别 ---
-            // Bug Fix: "IDAYU" was being skipped because it contained "ID"
-            const handleImportStudentCSV = (event) => {
-                const file = event.target.files[0];
-                if (!file) return;
+            const toggleTempAbsent = (name) => { if(tempAbsentees.includes(name)) setTempAbsentees(prev=>prev.filter(n=>n!==name)); else setTempAbsentees(prev=>[...prev, name]); };
+
+            // 优化：直接确认外出并记录原因
+            const executeExit = (reasonObj, specificText='') => {
+                if (selectedOutStudents.length === 0) return;
+                const finalReason = specificText ? `${reasonObj.label} (${specificText})` : reasonObj.label;
+                const now = new Date();
+                const newLogs = selectedOutStudents.map((name, i) => {
+                    const logId = Date.now() + i + Math.random();
+                    syncToCloud({
+                        action: 'log_out', id: logId, date: now.toLocaleDateString('en-GB'),
+                        timeOut: now.toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit', hour12:true}),
+                        className: getActiveClass().name, name: name, reason: finalReason
+                    });
+                    return {
+                        id: logId, classId: activeClassId, date: now.toISOString(), name: name,
+                        timeOut: now.toISOString(), timeIn: null, reason: reasonObj.label, 
+                        reasonDisplay: finalReason, reasonId: reasonObj.id
+                    };
+                });
+                setLogs([...newLogs, ...logs]);
+                setSelectedOutStudents([]); // 关键：清空选中状态
+                setShowCustomReasonInput(false); 
+                setCustomReasonText('');
+            };
+
+            const handleConfirmExit = (reasonObj) => { 
+                if (reasonObj.id === 'lain') { setShowCustomReasonInput(true); return; } 
+                executeExit(reasonObj); 
+            };
+            
+            const submitCustomReason = () => { const lainReasonObj = REASONS.find(r => r.id === 'lain'); executeExit(lainReasonObj, customReasonText); };
+
+            // 优化：直接处理学生回来，无需确认
+            const handleStudentReturn = (id) => {
+                const now = new Date();
+                const updatedLogs = logs.map(log => {
+                    if (log.id === id) {
+                        const dur = Math.round((now - new Date(log.timeOut))/60000) + ' min';
+                        const timeInStr = now.toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit', hour12:true});
+                        syncToCloud({ action: 'log_in', id: id, timeIn: timeInStr, duration: dur });
+                        return { ...log, timeIn: now.toISOString() };
+                    }
+                    return log;
+                });
+                setLogs(updatedLogs); 
+            };
+
+            const handleSaveAttendance = (list) => {
+                const today = getTodayString();
+                setAttendanceData(prev => ({...prev, [activeClassId]: {date: today, absent: list}}));
+                syncToCloud({ action: 'save_attendance', className: getActiveClass().name, absentList: list });
+                setGlobalModal({ type:'alert', title:'成功', message:'点名已保存并同步。', onConfirm: ()=>setView('dashboard') });
+            };
+
+            const handleExportData = () => {
+                const data = { classes, logs, attendanceData, assignedClassIds, isExamMode, backupDate: new Date().toISOString() };
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a'); a.href = url; a.download = `SJKC_Log_Backup_${getTodayString()}.json`; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            };
+
+            const handleExportClassLogsCSV = () => {
+                const cls = getActiveClass(); if (!cls) return;
+                const classLogs = logs.filter(log => log.classId === activeClassId);
+                let csvContent = "Date,Name,Time Out,Time In,Reason,Duration (Min)\n";
+                classLogs.forEach(log => {
+                    const duration = log.timeIn ? Math.round((new Date(log.timeIn) - new Date(log.timeOut)) / 1000 / 60) : '';
+                    const safeName = `"${log.name}"`;
+                    const reason = log.reasonDisplay || log.reason;
+                    const row = `${formatDate(log.date)},${safeName},${formatTime(log.timeOut)},${formatTime(log.timeIn) || 'Still Out'},"${reason}",${duration}`;
+                    csvContent += row + "\n";
+                });
+                const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a'); a.href = url; a.download = `${cls.name}_Logs_${getTodayString()}.csv`; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            };
+            
+            const handleImportData = (event) => {
+                const file = event.target.files[0]; if (!file) return;
+                if(!window.confirm("警告：恢复备份将覆盖当前所有数据！\nAwas: Data semasa akan diganti!")) { event.target.value = ''; return; }
                 const reader = new FileReader();
                 reader.onload = (e) => {
-                    const text = e.target.result;
-                    const lines = text.split(/\r\n|\n/);
-                    const newStudents = lines.map(line => {
-                        const parts = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                        const cleanParts = parts.map(p => p.replace(/^["']|["']$/g, '').trim()).filter(p => p);
-                        if (cleanParts.length === 0) return null;
-                        
-                        const rowStr = cleanParts.join(' ').toLowerCase();
-
-                        // 1. 危险关键字: 使用严格匹配 (Whole Word / Exact Match)
-                        // 避免误伤如 "ANIS NUUR IDAYU" (含 "id") 或 "NOR FAZREEN" (含 "no")
-                        const strictKeywords = ['id', 'no', 'no.', 'bil', 'code', 'year', 'class', 'sex', 'kp', 'ic'];
-                        
-                        // 2. 普通关键字: 使用宽松匹配 (Contains)
-                        const looseKeywords = [
-                            'nama', 'catatan', 'remark', 'note', 'kelas', 'tahun', 'gender', 'jantina', 
-                            'lelaki', 'perempuan', 'male', 'female', 'agama', 'kaum', 'race', 'religion', 
-                            'tarikh', 'date', 'lahir', 'birth', 'mykid', 'warganegara', 'citizen',
-                            '姓名', '名字', '性命', '学生', '班级', '编号', '学号', '备注', '注释', 
-                            '身份证', '种族', '宗教', '出生日期', '性别'
-                        ];
-                        
-                        const isHeader = 
-                            // 检查每个单元格是否完全等于危险关键字
-                            cleanParts.some(p => {
-                                const s = p.toLowerCase().replace(/[^a-z0-9.]/g, ''); // 只保留字母数字和点
-                                return strictKeywords.includes(s);
-                            }) ||
-                            // 检查整行是否包含普通关键字
-                            looseKeywords.some(k => rowStr.includes(k)) ||
-                            // 检查是否全数字/符号
-                            /^[\d\s\-\.\/]+$/.test(rowStr) || 
-                            rowStr.length < 2;
-
-                        if (isHeader) return null;
-
-                        let mixedName = null, cnName = null, myName = null;
-                        for (const part of cleanParts) {
-                            if (/^[\d\s\-\.\/]+$/.test(part) || part.length < 2) continue;
-                            const hasChinese = /[\u4e00-\u9fa5]/.test(part);
-                            const hasLatin = /[a-zA-Z]/.test(part);
-                            if (hasChinese && hasLatin) { if (!mixedName || part.length > mixedName.length) mixedName = part; }
-                            else if (hasChinese) { if (!cnName || part.length > cnName.length) cnName = part; }
-                            else if (hasLatin) { if (!myName || part.length > myName.length) { myName = part; } }
-                        }
-                        if (mixedName) return mixedName;
-                        if (cnName && myName) return `${myName} ${cnName}`; 
-                        if (cnName) return cnName;
-                        if (myName) return myName; 
-                        return null;
-                    }).filter(Boolean);
-
-                    if (newStudents.length > 0) {
-                        const currentStudents = editingClass.students || [];
-                        const uniqueStudents = [...new Set([...currentStudents, ...newStudents])];
-                        setEditingClass({ ...editingClass, students: uniqueStudents });
-                        setGlobalModal({ type: 'alert', title: '导入成功', message: `成功导入 ${newStudents.length} 个名字。`, confirmText: 'OK' });
-                    } else {
-                        setGlobalModal({ type: 'alert', title: '无法导入', message: '未能识别出有效的名字。\n请确保文件格式正确 (CSV/TXT)。', isDanger: true });
-                    }
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        if (data.classes) setClasses(data.classes);
+                        if (data.logs) setLogs(data.logs);
+                        if (data.attendanceData) setAttendanceData(data.attendanceData);
+                        if (data.assignedClassIds) setAssignedClassIds(data.assignedClassIds);
+                        if (data.isExamMode !== undefined) setIsExamMode(data.isExamMode);
+                        setGlobalModal({ type: 'alert', title: '恢复成功 / Berjaya', message: '数据已成功恢复！', onConfirm: () => window.location.reload() });
+                    } catch (err) { setGlobalModal({ type: 'alert', title: '错误 / Ralat', message: '文件格式错误！', isDanger: true }); }
                 };
                 reader.readAsText(file);
-                event.target.value = '';
+            };
+
+            const handleImportStudentCSV = (e) => { 
+                const file = e.target.files[0]; if(!file) return;
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                     const text = evt.target.result;
+                     const lines = text.split(/\r\n|\n/);
+                     const newStudents = lines.map(line => {
+                         const parts = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                         const cleanParts = parts.map(p => p.replace(/^["']|["']$/g, '').trim()).filter(p => p);
+                         if (cleanParts.length === 0) return null;
+                         const rowStr = cleanParts.join(' ').toLowerCase();
+                         const ignoreKeywords = ['bil', 'no', 'id', 'code', 'name', 'nama', 'catatan', 'remark', 'note', 'class', 'kelas', 'year', 'tahun', 'gender', 'jantina', 'sex', 'lelaki', 'perempuan', 'male', 'female', 'agama', 'kaum', 'race', 'religion', 'tarikh', 'date', 'lahir', 'birth', 'mykid', 'kp', 'ic', 'warganegara', 'citizen', '姓名', '名字', '性命', '学生', '班级', '编号', '学号', '备注', '注释', '身份证', '种族', '宗教', '出生日期', '性别'];
+                         const isHeader = cleanParts.some(p => { const s = p.toLowerCase().replace(/[^a-z0-9.]/g, ''); return ['id', 'no', 'no.', 'bil', 'code'].includes(s); }) || ignoreKeywords.some(k => rowStr.includes(k) && !['id', 'no', 'bil'].includes(k)) || /^[\d\s\-\.\/]+$/.test(rowStr) || rowStr.length < 2;
+                         if (isHeader) return null;
+
+                         let mixedName = null, cnName = null, myName = null;
+                         for (const part of cleanParts) {
+                             if (/^[\d\s\-\.\/]+$/.test(part) || part.length < 2) continue;
+                             const hasChinese = /[\u4e00-\u9fa5]/.test(part);
+                             const hasLatin = /[a-zA-Z]/.test(part);
+                             if (hasChinese && hasLatin) { if (!mixedName || part.length > mixedName.length) mixedName = part; }
+                             else if (hasChinese) { if (!cnName || part.length > cnName.length) cnName = part; }
+                             else if (hasLatin) { if (!myName || part.length > myName.length) { myName = part; } }
+                         }
+                         if (mixedName) return mixedName;
+                         if (cnName && myName) return `${myName} ${cnName}`; 
+                         if (cnName) return cnName;
+                         if (myName) return myName; 
+                         return null;
+                     }).filter(Boolean);
+                     if(newStudents.length > 0) {
+                         setEditingClass({...editingClass, students: [...new Set([...editingClass.students, ...newStudents])]});
+                         setGlobalModal({type:'alert', title:'导入成功', message:`导入了 ${newStudents.length} 名学生`, confirmText: 'OK'});
+                     } else {
+                         setGlobalModal({type:'alert', title:'无法导入', message:'未能识别出有效的名字', isDanger: true});
+                     }
+                };
+                reader.readAsText(file);
+                e.target.value = '';
             };
 
             const handleAddClass = () => { const newClass = { id: Date.now().toString(), name: 'New Class', teacher: 'Guru Name', students: [] }; setClasses([...classes, newClass]); setEditingClass(newClass); };
             const handleDeleteClass = (id) => { setGlobalModal({ type: 'confirm', title: '删除班级', message: '确定要删除这个班级吗？所有记录将丢失。', confirmText: '删除', isDanger: true, onConfirm: () => { setClasses(prev => prev.filter(c => c.id !== id)); setAssignedClassIds(prev => prev.filter(assignedId => assignedId !== id)); }}); };
             const handleSaveClass = (updatedClass) => { const cleanedStudents = [...new Set(updatedClass.students.map(s => s.trim()).filter(s => s !== ""))]; const finalClass = { ...updatedClass, students: cleanedStudents }; setClasses(classes.map(c => c.id === finalClass.id ? finalClass : c)); setEditingClass(null); };
-            const handleSaveAttendance = (absentList) => { const today = getTodayString(); setAttendanceData(prev => ({ ...prev, [activeClassId]: { date: today, absent: absentList } })); setGlobalModal({ type: 'alert', title: '保存成功', message: '今日缺席名单已更新。', confirmText: 'OK', onConfirm: () => setView('dashboard') }); };
-            const toggleTempAbsent = (name) => { if (tempAbsentees.includes(name)) setTempAbsentees(prev => prev.filter(n => n !== name)); else setTempAbsentees(prev => [...prev, name]); };
-            const toggleStudentSelection = (name) => { const isOut = logs.find(log => log.classId === activeClassId && log.name === name && !log.timeIn); if (isOut) { setGlobalModal({ type: 'alert', title: '无法选择', message: `${name} 已经在外面了` }); return; } if (selectedOutStudents.includes(name)) setSelectedOutStudents(prev => prev.filter(n => n !== name)); else setSelectedOutStudents(prev => [...prev, name]); };
-            const executeExit = (reasonObj, specificText = '') => { if (selectedOutStudents.length === 0) return; const finalReasonDisplay = specificText ? `${reasonObj.label} (${specificText})` : reasonObj.label; const newLogs = selectedOutStudents.map((name, index) => ({ id: Date.now() + index, classId: activeClassId, date: new Date().toISOString(), name: name, timeOut: new Date().toISOString(), timeIn: null, reason: finalReasonDisplay, reasonDisplay: finalReasonDisplay, reasonId: reasonObj.id })); setLogs([...newLogs, ...logs]); setView('dashboard'); setSelectedOutStudents([]); setShowCustomReasonInput(false); setCustomReasonText(''); };
-            const handleConfirmExit = (reasonObj) => { if (reasonObj.id === 'lain') { setShowCustomReasonInput(true); return; } executeExit(reasonObj); };
-            const submitCustomReason = () => { const lainReasonObj = REASONS.find(r => r.id === 'lain'); executeExit(lainReasonObj, customReasonText); };
-            const handleStudentReturn = (logId) => { const updatedLogs = logs.map(log => { if (log.id === logId) return { ...log, timeIn: new Date().toISOString() }; return log; }); setLogs(updatedLogs); setConfirmReturnId(null); };
-            const handleBatchReturn = () => { if (selectedReturnIds.length === 0) return; setGlobalModal({ type: 'confirm', title: '确认回来', message: `确认让选中的 ${selectedReturnIds.length} 名学生回来吗？`, confirmText: '确认', onConfirm: () => { const updatedLogs = logs.map(log => { if (selectedReturnIds.includes(log.id)) return { ...log, timeIn: new Date().toISOString() }; return log; }); setLogs(updatedLogs); setSelectedReturnIds([]); }}); };
-            const toggleReturnSelection = (logId) => { if (selectedReturnIds.includes(logId)) setSelectedReturnIds(prev => prev.filter(id => id !== logId)); else setSelectedReturnIds(prev => [...prev, logId]); };
             const handleClearHistory = () => { setGlobalModal({ type: 'confirm', title: '清除记录', message: '确定要清除本班所有记录吗？', confirmText: '清除', isDanger: true, onConfirm: () => { setLogs(prev => prev.filter(l => l.classId !== activeClassId)); }}); };
             const handleAssignClass = (classId) => { if (!classId || assignedClassIds.includes(classId)) return; setAssignedClassIds([...assignedClassIds, classId]); };
             const handleUnassignClass = (classId) => { setAssignedClassIds(assignedClassIds.filter(id => id !== classId)); };
 
-            // --- 界面渲染函数 (Renderers) ---
+            // --- 视图渲染 ---
 
             const renderGlobalModal = () => {
                 if (!globalModal) return null;
                 return (
                     <div className="absolute inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
-                        <div className="bg-white rounded-3xl p-8 shadow-2xl w-full max-w-md text-center border border-white/20 transform scale-100 animate-in zoom-in-95">
-                           <div className={`mx-auto w-20 h-20 rounded-full flex items-center justify-center mb-6 shadow-md ${ globalModal.type === 'alert' ? 'bg-blue-50 text-blue-600' : globalModal.isDanger ? 'bg-red-50 text-red-600' : globalModal.title.includes('成功') ? 'bg-green-50 text-green-600' : 'bg-yellow-50 text-yellow-600' }`}>
-                             {globalModal.type === 'alert' && !globalModal.title.includes('成功') && <Icon name="alert-circle" size={40} />}
-                             {globalModal.type === 'alert' && globalModal.title.includes('成功') && <Icon name="check-circle" size={40} />}
-                             {globalModal.type === 'confirm' && <Icon name="alert-triangle" size={40} />}
+                        <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-2xl w-full max-w-md text-center border border-white/20 transform scale-100 animate-in zoom-in-95">
+                           <div className={`mx-auto w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mb-4 sm:mb-6 shadow-md ${ globalModal.type === 'alert' ? 'bg-blue-50 text-blue-600' : globalModal.isDanger ? 'bg-red-50 text-red-600' : globalModal.title.includes('成功') ? 'bg-green-50 text-green-600' : 'bg-yellow-50 text-yellow-600' }`}>
+                             {globalModal.type === 'alert' && !globalModal.title.includes('成功') && <Icon name="alert-circle" size={32} className="sm:w-10 sm:h-10" />}
+                             {globalModal.type === 'alert' && globalModal.title.includes('成功') && <Icon name="check-circle" size={32} className="sm:w-10 sm:h-10" />}
+                             {globalModal.type === 'confirm' && <Icon name="alert-triangle" size={32} className="sm:w-10 sm:h-10" />}
                            </div>
-                           <h3 className="text-2xl font-bold text-slate-800 mb-2">{globalModal.title}</h3>
-                           <p className="text-lg text-slate-500 mb-8 whitespace-pre-line leading-relaxed">{globalModal.message}</p>
-                           <div className="flex gap-4">
-                             {globalModal.type === 'confirm' && ( <button onClick={() => setGlobalModal(null)} className="flex-1 py-3 rounded-2xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors"> {globalModal.cancelText || '取消 / Batal'} </button> )}
-                             <button onClick={() => { if (globalModal.onConfirm) globalModal.onConfirm(); setGlobalModal(null); }} className={`flex-1 py-3 rounded-2xl font-bold text-white shadow-lg transition-all active:scale-95 ${ globalModal.isDanger ? 'bg-red-600 hover:bg-red-700' : globalModal.type === 'alert' && !globalModal.title.includes('成功') ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700' }`}> {globalModal.confirmText || '确定 / OK'} </button>
+                           <h3 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2">{globalModal.title}</h3>
+                           <p className="text-base sm:text-lg text-slate-500 mb-6 sm:mb-8 whitespace-pre-line leading-relaxed">{globalModal.message}</p>
+                           <div className="flex gap-3 sm:gap-4 flex-col sm:flex-row">
+                             {globalModal.type === 'confirm' && ( <button onClick={() => setGlobalModal(null)} className="flex-1 py-3 rounded-xl sm:rounded-2xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors"> {globalModal.cancelText || '取消 / Batal'} </button> )}
+                             <button onClick={() => { if (globalModal.onConfirm) globalModal.onConfirm(); setGlobalModal(null); }} className={`flex-1 py-3 rounded-xl sm:rounded-2xl font-bold text-white shadow-lg transition-all active:scale-95 ${ globalModal.isDanger ? 'bg-red-600 hover:bg-red-700' : globalModal.type === 'alert' && !globalModal.title.includes('成功') ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700' }`}> {globalModal.confirmText || '确定 / OK'} </button>
                            </div>
                         </div>
                     </div>
@@ -332,23 +432,23 @@
                 if (!showCustomReasonInput) return null;
                 return (
                     <div className="absolute inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
-                        <div className="bg-white rounded-3xl p-8 shadow-2xl w-full max-w-lg border border-slate-100 transform scale-100 animate-in zoom-in-95">
+                        <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-2xl w-full max-w-lg border border-slate-100 transform scale-100 animate-in zoom-in-95 max-h-screen overflow-y-auto">
                            <div className="text-center mb-6">
-                             <div className="mx-auto bg-slate-100 w-20 h-20 rounded-full flex items-center justify-center text-slate-600 mb-4 shadow-inner"><Icon name="pen-tool" size={36} /></div>
-                             <h3 className="text-3xl font-bold text-slate-800 mb-2">具体原因 (可选)</h3>
-                             <p className="text-xl text-slate-500">Sebab Lain (Pilihan)</p>
+                             <div className="mx-auto bg-slate-100 w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center text-slate-600 mb-4 shadow-inner"><Icon name="pen-tool" size={32} /></div>
+                             <h3 className="text-2xl sm:text-3xl font-bold text-slate-800 mb-2">具体原因 (可选)</h3>
+                             <p className="text-lg sm:text-xl text-slate-500">Sebab Lain (Pilihan)</p>
                            </div>
-                           <div className="grid grid-cols-2 gap-3 mb-6">
+                           <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-6">
                              {PRESET_OTHER_REASONS.map((preset) => (
-                               <button key={preset.label} onClick={() => { const lainReasonObj = REASONS.find(r => r.id === 'lain'); executeExit(lainReasonObj, `${preset.label} / ${preset.labelMy}`); }} className="p-3 bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 rounded-xl flex items-center gap-3 transition-all text-left group active:scale-95">
+                               <button key={preset.label} onClick={() => { const lainReasonObj = REASONS.find(r => r.id === 'lain'); executeExit(lainReasonObj, `${preset.label} / ${preset.labelMy}`); }} className="p-2 sm:p-3 bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 rounded-xl flex flex-col sm:flex-row items-center gap-2 sm:gap-3 transition-all text-center sm:text-left group active:scale-95">
                                  <span className="text-2xl group-hover:scale-110 transition-transform">{preset.icon}</span>
-                                 <div><div className="font-bold text-slate-700 text-sm leading-tight">{preset.label}</div><div className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">{preset.labelMy}</div></div>
+                                 <div><div className="font-bold text-slate-700 text-xs sm:text-sm leading-tight">{preset.label}</div><div className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">{preset.labelMy}</div></div>
                                </button>
                              ))}
                            </div>
                            <div className="relative mb-6"><div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200"></div></div><div className="relative flex justify-center text-xs"><span className="px-2 bg-white text-slate-400 font-bold uppercase tracking-wider">或手动输入 / Atau taip manual</span></div></div>
-                           <input autoFocus type="text" value={customReasonText} onChange={(e) => setCustomReasonText(e.target.value)} placeholder="例如：去拿书 / Contoh: Ambil Buku" className="w-full p-5 text-xl bg-slate-50 border-2 border-slate-200 rounded-2xl mb-8 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all" onKeyDown={(e) => { if (e.key === 'Enter') submitCustomReason(); }} />
-                           <button onClick={submitCustomReason} className="w-full py-4 rounded-2xl font-bold text-xl text-white bg-blue-600 hover:bg-blue-700 shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2">确定 / Sahkan</button>
+                           <input autoFocus type="text" value={customReasonText} onChange={(e) => setCustomReasonText(e.target.value)} placeholder="例如：去拿书 / Contoh: Ambil Buku" className="w-full p-4 sm:p-5 text-lg sm:text-xl bg-slate-50 border-2 border-slate-200 rounded-2xl mb-6 sm:mb-8 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all" onKeyDown={(e) => { if (e.key === 'Enter') submitCustomReason(); }} />
+                           <button onClick={submitCustomReason} className="w-full py-3 sm:py-4 rounded-xl sm:rounded-2xl font-bold text-lg sm:text-xl text-white bg-blue-600 hover:bg-blue-700 shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2">确定 / Sahkan</button>
                            <button onClick={() => { setShowCustomReasonInput(false); setCustomReasonText(''); }} className="w-full mt-4 py-3 text-slate-400 font-medium hover:text-slate-600">取消 / Batal</button>
                         </div>
                     </div>
@@ -359,39 +459,38 @@
                 const visibleClasses = assignedClassIds.length > 0 ? classes.filter(c => assignedClassIds.includes(c.id)) : [];
                 return (
                     <div className="flex flex-col items-center justify-center h-full bg-slate-50 relative animate-in fade-in">
-                        <div className="absolute top-6 right-6 z-10"><button onClick={() => setShowAdminLogin(true)} className="flex items-center gap-2 text-slate-400 hover:text-blue-600 transition-colors bg-white/50 px-4 py-2 rounded-full backdrop-blur-sm"><Icon name="settings" size={20} /> <span className="text-sm font-medium">系统管理</span></button></div>
-                        <div className="text-center mb-12 z-10">
-                            <img src="https://raw.githubusercontent.com/chengyang365/ClassMovementLog/refs/heads/main/logo.png" className="w-28 h-28 mx-auto mb-6 shadow-xl rounded-3xl rotate-3 transform hover:rotate-6 transition-transform object-contain bg-white" alt="校徽" />
-                            <h1 className="text-5xl font-black text-slate-800 mb-2 tracking-tight">新廊华小</h1>
-                            <p className="text-2xl text-slate-500 tracking-wide font-medium">电子出入记录系统 / Sistem Rekod Keluar Masuk Murid</p>
+                        <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-10"><button onClick={() => setShowAdminLogin(true)} className="flex items-center gap-2 text-slate-400 hover:text-blue-600 transition-colors bg-white/80 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full backdrop-blur-sm shadow-sm border border-slate-100"><Icon name="settings" size={18} /> <span className="text-xs sm:text-sm font-medium">管理 Admin</span></button></div>
+                        <div className="text-center mb-8 sm:mb-12 z-10 mt-8">
+                            <img src="https://raw.githubusercontent.com/chengyang365/ClassMovementLog/refs/heads/main/logo.png" className="w-28 h-28 mx-auto mb-6 shadow-xl rounded-3xl rotate-3 transform hover:rotate-6 transition-transform object-contain bg-white" alt="校徽" />                            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-800 mb-1 sm:mb-2 tracking-tight">新廊华小</h1>
+                            <p className="text-base sm:text-xl md:text-2xl text-slate-500 tracking-wide font-medium">电子出入记录系统<br className="sm:hidden"/> <span className="hidden sm:inline">/</span> Sistem Rekod Keluar Masuk Murid</p>
                         </div>
-                        <div className={`grid gap-6 max-w-5xl w-full px-6 overflow-y-auto max-h-[60vh] pb-10 z-10 ${visibleClasses.length === 1 ? 'grid-cols-1 place-items-center' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
+                        <div className={`grid gap-4 sm:gap-6 max-w-5xl w-full px-4 sm:px-6 overflow-y-auto max-h-[60vh] pb-10 z-10 custom-scrollbar ${visibleClasses.length === 1 ? 'grid-cols-1 place-items-center' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
                             {visibleClasses.length > 0 ? visibleClasses.map(cls => (
-                                <button key={cls.id} onClick={() => handleEnterClass(cls.id)} className={`bg-white p-8 rounded-3xl shadow-sm border border-slate-100 hover:border-blue-400 hover:shadow-xl hover:-translate-y-1 transition-all group text-left relative overflow-hidden ${visibleClasses.length === 1 ? 'w-full max-w-md border-blue-200 ring-4 ring-blue-50' : ''}`}>
-                                    <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+                                <button key={cls.id} onClick={() => handleEnterClass(cls.id)} className={`bg-white p-6 sm:p-8 rounded-2xl sm:rounded-3xl shadow-sm border border-slate-100 hover:border-blue-400 hover:shadow-xl hover:-translate-y-1 transition-all group text-left relative overflow-hidden ${visibleClasses.length === 1 ? 'w-full max-w-md border-blue-200 ring-4 ring-blue-50' : ''}`}>
+                                    <div className="absolute top-0 right-0 w-20 h-20 sm:w-24 sm:h-24 bg-blue-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
                                     <div className="relative">
-                                        <div className="flex justify-between items-start mb-4"><h2 className="text-3xl font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{cls.name}</h2><Icon name="arrow-right" className="text-slate-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" /></div>
-                                        <p className="text-slate-500 font-medium flex items-center gap-2"><Icon name="users" size={16} /> {cls.teacher}</p>
-                                        <p className="text-slate-400 text-sm mt-2">{cls.students.length} 名学生 / Murid</p>
+                                        <div className="flex justify-between items-start mb-3 sm:mb-4"><h2 className="text-2xl sm:text-3xl font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{cls.name}</h2><Icon name="arrow-right" className="text-slate-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" /></div>
+                                        <p className="text-slate-500 text-sm sm:text-base font-medium flex items-center gap-2"><Icon name="users" size={16} /> {cls.teacher}</p>
+                                        <p className="text-slate-400 text-xs sm:text-sm mt-2">{cls.students.length} 名学生 / Murid</p>
                                     </div>
                                 </button>
                             )) : (
-                                <div className="col-span-full flex flex-col items-center justify-center p-12 bg-white/80 backdrop-blur-sm rounded-3xl border-2 border-dashed border-slate-300 text-slate-500 shadow-sm w-full max-w-lg mx-auto">
-                                    <div className="bg-slate-100 w-24 h-24 rounded-full flex items-center justify-center mb-6"><Icon name="monitor" size={48} className="text-slate-400" /></div>
-                                    <h3 className="text-2xl font-bold mb-3 text-slate-700">此设备尚未绑定班级</h3>
-                                    <p className="mb-8 text-center text-lg leading-relaxed">为了正常使用，请进入“系统管理”<br/>设置此屏幕所显示的班级。</p>
-                                    <button onClick={() => setShowAdminLogin(true)} className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-bold text-lg hover:bg-blue-700 transition-all shadow-lg hover:shadow-blue-200 hover:-translate-y-1 active:translate-y-0">前往设置 / Setup</button>
+                                <div className="col-span-full flex flex-col items-center justify-center p-8 sm:p-12 bg-white/80 backdrop-blur-sm rounded-3xl border-2 border-dashed border-slate-300 text-slate-500 shadow-sm w-full max-w-lg mx-auto">
+                                    <div className="bg-slate-100 w-20 h-20 sm:w-24 sm:h-24 rounded-full flex items-center justify-center mb-4 sm:mb-6"><Icon name="monitor" size={40} className="text-slate-400 sm:w-[48px] sm:h-[48px]" /></div>
+                                    <h3 className="text-xl sm:text-2xl font-bold mb-2 sm:mb-3 text-slate-700">此设备尚未绑定班级</h3>
+                                    <p className="mb-6 sm:mb-8 text-center text-sm sm:text-lg leading-relaxed">请进入“系统管理”<br/>设置此屏幕需要显示的班级。</p>
+                                    <button onClick={() => setShowAdminLogin(true)} className="bg-blue-600 text-white px-6 py-3 sm:px-8 sm:py-4 rounded-xl sm:rounded-2xl font-bold text-base sm:text-lg hover:bg-blue-700 transition-all shadow-lg hover:shadow-blue-200 active:scale-95">前往设置 / Setup</button>
                                 </div>
                             )}
                         </div>
                         {showAdminLogin && (
-                            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-                                <div className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm border border-white/20">
-                                    <h3 className="text-xl font-bold mb-4 text-slate-800">管理员登录</h3>
-                                    <input type="password" placeholder="输入密码" className="w-full p-4 border-2 border-slate-100 rounded-2xl mb-4 text-lg focus:border-blue-500 focus:outline-none" value={adminPasswordInput} onChange={e => setAdminPasswordInput(e.target.value)} />
+                            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                                <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-2xl w-full max-w-sm border border-white/20 animate-in zoom-in-95">
+                                    <h3 className="text-lg sm:text-xl font-bold mb-4 text-slate-800">管理员登录</h3>
+                                    <input type="password" placeholder="输入密码 (1234)" className="w-full p-3 sm:p-4 border-2 border-slate-100 rounded-xl sm:rounded-2xl mb-4 text-base sm:text-lg focus:border-blue-500 focus:outline-none" value={adminPasswordInput} onChange={e => setAdminPasswordInput(e.target.value)} />
                                     <div className="flex gap-3">
-                                        <button onClick={() => {setShowAdminLogin(false); setAdminPasswordInput('');}} className="flex-1 py-3 text-slate-600 font-bold bg-slate-100 rounded-2xl hover:bg-slate-200">取消</button>
-                                        <button onClick={handleAdminLogin} className="flex-1 py-3 text-white font-bold bg-blue-600 rounded-2xl hover:bg-blue-700 shadow-lg">登录</button>
+                                        <button onClick={() => {setShowAdminLogin(false); setAdminPasswordInput('');}} className="flex-1 py-3 text-slate-600 text-sm sm:text-base font-bold bg-slate-100 rounded-xl hover:bg-slate-200">取消</button>
+                                        <button onClick={handleAdminLogin} className="flex-1 py-3 text-white text-sm sm:text-base font-bold bg-blue-600 rounded-xl hover:bg-blue-700 shadow-lg">登录</button>
                                     </div>
                                 </div>
                             </div>
@@ -408,196 +507,214 @@
                 const totalStudents = cls.students.length;
                 const absentCount = absentees.length;
                 const presentCount = totalStudents - absentCount;
-                const attendancePercentage = totalStudents > 0 ? ((presentCount / totalStudents) * 100).toFixed(2) : "0.00";
+                const attendancePercentage = totalStudents > 0 ? ((presentCount / totalStudents) * 100).toFixed(0) : "0";
 
                 return (
-                    <div className="flex flex-col h-full space-y-6 relative animate-in fade-in">
-                        <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex justify-between items-center shrink-0">
-                            <div className="flex items-center gap-4">
-                                <button onClick={() => setView('landing')} className="bg-slate-100 p-3 rounded-2xl hover:bg-slate-200 text-slate-600 transition-colors">
+                    <div className="flex flex-col h-full space-y-4 sm:space-y-6 relative animate-in fade-in">
+                        {/* Header */}
+                        <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm border border-slate-100 flex justify-between items-center shrink-0 flex-wrap gap-4">
+                            <div className="flex items-center gap-3 sm:gap-4">
+                                <button onClick={() => setView('landing')} className="bg-slate-100 p-2 sm:p-3 rounded-xl sm:rounded-2xl hover:bg-slate-200 text-slate-600 transition-colors">
                                     <Icon name="chevron-left" size={24} />
                                 </button>
                                 <div>
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-0.5 rounded-full">新廊华小</span>
-                                        {isExamMode && <span className="bg-red-100 text-red-600 text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1 animate-pulse"><Icon name="alert-octagon" size={12}/> 考试进行中</span>}
+                                    <div className="flex items-center gap-2 mb-0.5 sm:mb-1">
+                                        <span className="bg-blue-100 text-blue-700 text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full">新廊华小</span>
+                                        {isExamMode && <span className="bg-red-100 text-red-600 text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1 animate-pulse"><Icon name="alert-octagon" size={12}/> 考试进行中</span>}
                                     </div>
-                                    <h1 className="text-3xl font-bold text-slate-800">{cls.name}</h1>
-                                    <div className="flex items-center gap-2 text-slate-500">
-                                        <span className="text-lg">Guru: {cls.teacher}</span>
+                                    <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 leading-tight">{cls.name}</h1>
+                                    <div className="flex items-center gap-2 text-slate-500 mt-1">
+                                        <span className="text-xs sm:text-sm md:text-lg truncate max-w-[120px] sm:max-w-none">Guru: {cls.teacher}</span>
                                         <span className="text-slate-300">|</span>
-                                        <button onClick={() => { setTempAbsentees(getCurrentAbsentees(cls.id)); setView('attendance'); }} className="flex items-center gap-1 text-blue-600 bg-blue-50 px-3 py-1 rounded-lg hover:bg-blue-100 transition-colors font-bold text-sm">
-                                            <Icon name="user-x" size={16} /> 点名
+                                        <button onClick={() => { setTempAbsentees(getCurrentAbsentees(cls.id)); setView('attendance'); }} className="flex items-center gap-1 text-blue-600 bg-blue-50 px-2 py-1 sm:px-3 sm:py-1 rounded-lg hover:bg-blue-100 transition-colors font-bold text-[10px] sm:text-sm">
+                                            <Icon name="user-x" size={14} className="sm:w-[16px] sm:h-[16px]" /> 点名
                                         </button>
                                     </div>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-8">
+                            <div className="flex items-center gap-4 sm:gap-8 ml-auto">
                                 <div className="text-right hidden md:block">
                                     <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">今日出席率</div>
-                                    <div className="flex items-baseline justify-end gap-2">
-                                        <span className="text-4xl font-black text-slate-800">{presentCount}<span className="text-slate-300 text-2xl font-normal mx-1">/</span>{totalStudents}</span>
-                                        <span className={`text-lg font-bold ${parseFloat(attendancePercentage) === 100 ? 'text-green-500' : 'text-blue-500'}`}>({attendancePercentage}%)</span>
+                                    <div className="flex items-baseline justify-end gap-1 sm:gap-2">
+                                        <span className="text-2xl sm:text-4xl font-black text-slate-800">{presentCount}<span className="text-slate-300 text-lg sm:text-2xl font-normal mx-1">/</span>{totalStudents}</span>
+                                        <span className={`text-sm sm:text-lg font-bold ${parseFloat(attendancePercentage) === 100 ? 'text-green-500' : 'text-blue-500'}`}>({attendancePercentage}%)</span>
                                     </div>
-                                    {absentCount > 0 && <div className="text-xs text-red-500 font-bold mt-1 bg-red-50 inline-block px-2 py-0.5 rounded-full">{absentCount} 缺席</div>}
+                                    {absentCount > 0 && <div className="text-[10px] sm:text-xs text-red-500 font-bold mt-1 bg-red-50 inline-block px-2 py-0.5 rounded-full">{absentCount} 缺席</div>}
                                 </div>
-                                <div className="h-10 w-px bg-slate-200 hidden md:block"></div>
+                                <div className="h-8 sm:h-10 w-px bg-slate-200 hidden md:block"></div>
                                 <DigitalClock />
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-grow overflow-y-auto lg:overflow-hidden">
-                            <div className={`bg-white rounded-3xl shadow-lg border-2 p-8 flex flex-col justify-center items-center space-y-8 relative overflow-hidden group transition-all select-none ${isExamMode ? 'border-slate-200 grayscale cursor-not-allowed' : 'border-blue-50 hover:border-blue-300 cursor-pointer'}`}
-                                onClick={() => { if (!isExamMode) { setSelectedOutStudents([]); setView('select-student'); } }}>
+                        {/* Layout: 左边 3/4 学生选择, 右边 1/4 正在外面 (手机端变为上下堆叠) */}
+                        <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 flex-grow overflow-hidden">
+                            
+                            {/* 左侧: 学生网格区 */}
+                            <div className="lg:w-3/4 bg-white rounded-2xl sm:rounded-3xl shadow-sm border border-slate-100 flex flex-col relative overflow-hidden flex-grow lg:flex-grow-0 h-full">
                                 {isExamMode ? (
-                                    <React.Fragment>
-                                        <div className="bg-slate-100 text-slate-400 p-8 rounded-full shadow-inner mb-4"><Icon name="lock" size={80} /></div>
-                                        <div className="text-center z-10"><h2 className="text-4xl font-black text-slate-500 mb-3 tracking-tight">考试进行中</h2><p className="text-xl text-slate-400 font-medium">Peperiksaan Sedang Dijalankan</p><p className="text-sm text-red-400 mt-4 font-bold">外出功能已锁定 / Dikunci</p></div>
-                                    </React.Fragment>
+                                    <div className="flex flex-col items-center justify-center h-full bg-slate-50 text-slate-400 opacity-80 p-6 text-center">
+                                        <div className="bg-slate-200 p-6 sm:p-8 rounded-full shadow-inner mb-4"><Icon name="lock" size={64} className="sm:w-[80px] sm:h-[80px]" /></div>
+                                        <h2 className="text-3xl sm:text-4xl font-black text-slate-500 mb-2 sm:mb-3 tracking-tight">考试进行中</h2>
+                                        <p className="text-lg sm:text-xl text-slate-400 font-medium">Peperiksaan Sedang Dijalankan</p>
+                                        <p className="text-xs sm:text-sm text-red-400 mt-4 font-bold">外出功能已锁定 / Dikunci</p>
+                                    </div>
                                 ) : (
                                     <React.Fragment>
-                                        <div className="absolute top-0 right-0 p-10 opacity-5 group-hover:opacity-10 transition-opacity"><Icon name="log-out" size={240} className="text-blue-600" /></div>
-                                        <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-8 rounded-full shadow-2xl transform group-hover:scale-110 group-active:scale-95 transition-all duration-300"><Icon name="log-out" size={80} /></div>
-                                        <div className="text-center z-10"><h2 className="text-5xl font-black text-slate-800 mb-3 tracking-tight">我要出去</h2><p className="text-2xl text-slate-500 font-medium">Saya Hendak Keluar</p></div>
-                                        <div className="w-full max-w-md bg-blue-50 text-blue-600 py-3 rounded-2xl text-center font-bold animate-pulse">点击这里 / Tekan Sini</div>
+                                        <div className="p-3 sm:p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
+                                            <div>
+                                                <h2 className="text-lg sm:text-xl font-bold text-slate-800">点选学生外出</h2>
+                                                <p className="text-slate-500 text-[10px] sm:text-xs">Sila pilih nama murid (Boleh pilih banyak)</p>
+                                            </div>
+                                            <div className="text-xs sm:text-sm font-bold text-slate-400 bg-slate-100 px-2 py-1 sm:px-3 sm:py-1 rounded-lg">
+                                                共 {cls.students.length} 人
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="flex-grow overflow-y-auto p-3 sm:p-4 custom-scrollbar pb-36 sm:pb-32">
+                                            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3">
+                                                {cls.students.map(name => {
+                                                    const isOut = activeLogs.find(log => log.name === name);
+                                                    const isAbsent = absentees.includes(name);
+                                                    const isSelected = selectedOutStudents.includes(name);
+                                                    const isDisabled = !!isOut || isAbsent;
+                                                    const { cn, my } = parseName(name);
+
+                                                    return (
+                                                        <button key={name} disabled={isDisabled} onClick={() => toggleStudentSelection(name)}
+                                                            className={`p-2 sm:p-3 rounded-xl sm:rounded-2xl text-left shadow-sm border-2 transition-all active:scale-95 flex items-center gap-2 sm:gap-3 relative overflow-hidden group ${
+                                                                isDisabled 
+                                                                    ? 'bg-slate-50 border-slate-100 opacity-60 cursor-not-allowed grayscale' 
+                                                                    : isSelected 
+                                                                        ? 'bg-blue-600 border-blue-600 text-white shadow-md ring-2 ring-blue-200 transform scale-[1.02] z-10'
+                                                                        : 'bg-white border-slate-100 hover:border-blue-400 hover:shadow-md text-slate-700'
+                                                            }`}
+                                                        >
+                                                            <div className="shrink-0">
+                                                                <UserAvatar name={name} active={isSelected} size="md" />
+                                                            </div>
+                                                            <div className="flex-grow min-w-0 pr-4 sm:pr-5">
+                                                                {cn && <div className={`text-sm sm:text-base font-black leading-tight mb-0.5 truncate ${isSelected ? 'text-white' : 'text-slate-800'}`}>{cn}</div>}
+                                                                <div className={`font-bold text-[10px] sm:text-[11px] truncate leading-tight ${isSelected ? 'text-blue-100' : cn ? 'text-slate-500 uppercase' : 'text-xs sm:text-sm text-slate-800'}`}>
+                                                                    {my || name}
+                                                                </div>
+                                                            </div>
+                                                            <div className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 flex flex-col gap-1 items-end">
+                                                                {isSelected && <Icon name="check-circle" size={18} className="text-white drop-shadow-sm sm:w-[20px] sm:h-[20px]" />}
+                                                                {isOut && <span className="text-[9px] sm:text-[10px] font-bold bg-slate-200 text-slate-600 px-1 sm:px-1.5 py-0.5 rounded shadow-sm">OUT</span>}
+                                                                {isAbsent && <span className="text-[9px] sm:text-[10px] font-bold bg-red-100 text-red-500 px-1 sm:px-1.5 py-0.5 rounded shadow-sm">缺席</span>}
+                                                            </div>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+
+                                        {/* 悬浮底部 Action Bar - 选择原因 */}
+                                        {selectedOutStudents.length > 0 && (
+                                            <div className="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 p-3 sm:p-4 md:p-6 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] z-20 animate-in slide-in-from-bottom-4 rounded-b-2xl sm:rounded-b-3xl lg:rounded-bl-3xl lg:rounded-br-none">
+                                                <div className="flex flex-col md:flex-row items-center gap-3 md:gap-6 max-w-5xl mx-auto w-full">
+                                                    <div className="flex items-center justify-between md:justify-start w-full md:w-auto gap-3 shrink-0">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="bg-blue-100 text-blue-600 font-black text-xl sm:text-2xl w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shrink-0">
+                                                                {selectedOutStudents.length}
+                                                            </div>
+                                                            <div className="text-slate-600 font-medium leading-tight text-sm sm:text-base">
+                                                                去哪里？<br/>
+                                                                <span className="text-[10px] sm:text-xs text-slate-400 text-left">Sila Pilih Sebab:</span>
+                                                            </div>
+                                                        </div>
+                                                        <button onClick={() => setSelectedOutStudents([])} className="md:hidden text-xs text-slate-400 font-bold bg-slate-100 px-3 py-1.5 rounded-lg">取消重选</button>
+                                                    </div>
+                                                    <div className="h-10 w-px bg-slate-200 hidden md:block shrink-0"></div>
+                                                    <div className="flex-grow grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 w-full">
+                                                        {REASONS.map(reason => (
+                                                            <button key={reason.id} onClick={() => handleConfirmExit(reason)} 
+                                                                className={`${reason.color} px-3 py-2 sm:px-4 sm:py-3 rounded-xl sm:rounded-2xl flex flex-row items-center justify-start gap-2 sm:gap-3 transition-transform active:scale-95 border-b-4 border-black/5 hover:brightness-95`}
+                                                            >
+                                                                <span className="text-xl sm:text-2xl md:text-3xl shrink-0">{reason.icon}</span>
+                                                                <div className="flex flex-col items-start text-left min-w-0">
+                                                                    <span className="font-bold text-xs sm:text-sm md:text-base leading-tight truncate w-full">{reason.label}</span>
+                                                                    <span className="text-[9px] sm:text-[10px] opacity-70 leading-none truncate w-full mt-0.5">{reason.labelMy}</span>
+                                                                </div>
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
                                     </React.Fragment>
                                 )}
                             </div>
 
-                            <div className="bg-slate-50 rounded-3xl border border-slate-200 p-6 flex flex-col relative overflow-hidden h-[500px] lg:h-auto">
-                                <div className="flex items-center justify-between mb-6 shrink-0">
-                                    <h2 className="text-2xl font-bold text-slate-700 flex items-center gap-3">
-                                        <span className="relative flex h-3 w-3"><span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${activeLogs.length > 0 ? 'bg-red-400' : 'bg-green-400'}`}></span><span className={`relative inline-flex rounded-full h-3 w-3 ${activeLogs.length > 0 ? 'bg-red-500' : 'bg-green-500'}`}></span></span>
-                                        正在外面 ({activeLogs.length})
+                            {/* 右侧: 正在外面列表 */}
+                            <div className="lg:w-1/4 bg-slate-50 rounded-2xl sm:rounded-3xl border border-slate-200 p-4 sm:p-5 flex flex-col relative overflow-hidden h-[300px] sm:h-[400px] lg:h-auto shrink-0">
+                                <div className="flex items-center justify-between mb-3 sm:mb-4 shrink-0">
+                                    <h2 className="text-base sm:text-lg font-bold text-slate-700 flex items-center gap-2">
+                                        <span className="relative flex h-2 sm:h-2.5 w-2 sm:w-2.5">
+                                            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${activeLogs.length > 0 ? 'bg-red-400' : 'bg-green-400'}`}></span>
+                                            <span className={`relative inline-flex rounded-full h-2 sm:h-2.5 w-2 sm:w-2.5 ${activeLogs.length > 0 ? 'bg-red-500' : 'bg-green-500'}`}></span>
+                                        </span>
+                                        在外 ({activeLogs.length})
                                     </h2>
-                                    {selectedReturnIds.length > 0 && <span className="text-blue-600 font-bold bg-blue-100 px-3 py-1 rounded-lg text-sm animate-pulse">已选 {selectedReturnIds.length} 人</span>}
                                 </div>
 
-                                <div className="flex-grow overflow-y-auto space-y-3 pr-2 pb-20 custom-scrollbar">
+                                <div className="flex-grow overflow-y-auto space-y-2 pr-1 custom-scrollbar">
                                     {activeLogs.length === 0 ? (
                                         <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60">
-                                            <div className="bg-white p-6 rounded-full shadow-sm mb-4"><Icon name="check-circle" size={60} className="text-green-400" /></div>
-                                            <p className="text-xl font-bold text-slate-500">全员在班</p><p className="text-sm">Semua murid di dalam kelas</p>
+                                            <div className="bg-white p-3 sm:p-4 rounded-full shadow-sm mb-2 sm:mb-3"><Icon name="check-circle" size={32} className="text-green-400 sm:w-[40px] sm:h-[40px]" /></div>
+                                            <p className="text-sm sm:text-base font-bold text-slate-500">全员在班</p>
                                         </div>
                                     ) : (
                                         activeLogs.map(log => {
                                             const reasonObj = REASONS.find(r => r.id === log.reasonId);
                                             const displayReason = log.reasonDisplay || (reasonObj ? reasonObj.label : log.reason);
-                                            const isSelected = selectedReturnIds.includes(log.id);
                                             const { cn, my } = parseName(log.name);
                                             const durationMs = new Date() - new Date(log.timeOut);
                                             const isOvertime = durationMs > 15 * 60 * 1000;
 
                                             return (
-                                                <div key={log.id} onClick={() => toggleReturnSelection(log.id)} className={`relative border-2 rounded-2xl p-4 shadow-sm flex justify-between items-center transition-all cursor-pointer select-none group ${isSelected ? 'bg-blue-50 border-blue-500 ring-2 ring-blue-200 z-10' : isOvertime ? 'bg-red-50 border-red-300 animate-pulse-red' : 'bg-white border-transparent hover:border-slate-300 hover:shadow-md'}`}>
-                                                    <div className="flex items-center gap-4 overflow-hidden">
-                                                        <div className="relative shrink-0"><UserAvatar name={log.name} size="lg" /><div className="absolute -bottom-1 -right-1 bg-white rounded-full p-1 shadow-sm"><div className="text-lg">{reasonObj?.icon || '❓'}</div></div></div>
-                                                        <div className="min-w-0">
-                                                            {cn && <div className={`text-lg font-black leading-none mb-0.5 truncate ${isSelected ? 'text-blue-800' : isOvertime ? 'text-red-800' : 'text-slate-800'}`}>{cn}</div>}
-                                                            <div className={`font-bold truncate leading-tight ${isSelected ? 'text-blue-700' : isOvertime ? 'text-red-600' : cn ? 'text-sm text-slate-500' : 'text-lg text-slate-800'}`}>{my || log.name}</div>
-                                                            <div className={`font-medium flex items-center gap-2 text-md mt-1 ${isSelected ? 'text-blue-600' : isOvertime ? 'text-red-500' : 'text-slate-500'}`}><span className="bg-slate-100 px-2 py-0.5 rounded text-sm text-slate-600 shrink-0">{displayReason}</span><span className="text-red-400 font-mono text-sm shrink-0">{formatTime(log.timeOut)}</span>{isOvertime && <span className="text-xs font-bold bg-red-100 px-2 py-0.5 rounded flex items-center gap-1"><Icon name="alert-triangle" size={10}/> 很久</span>}</div>
+                                                <div key={log.id} onClick={() => handleStudentReturn(log.id)}
+                                                    className={`relative border-2 rounded-xl p-2.5 sm:p-3 shadow-sm flex flex-col gap-1.5 sm:gap-2 transition-all cursor-pointer select-none group ${
+                                                        isOvertime ? 'bg-red-50 border-red-300 animate-pulse-red' : 'bg-white border-transparent hover:border-slate-300 hover:shadow-md'
+                                                    }`}
+                                                >
+                                                    <div className="flex items-start gap-2.5 sm:gap-3 overflow-hidden">
+                                                        <div className="relative shrink-0 mt-0.5">
+                                                            <UserAvatar name={log.name} size="sm" />
+                                                            <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 shadow-sm text-[10px] sm:text-xs">{reasonObj?.icon || '❓'}</div>
+                                                        </div>
+                                                        <div className="min-w-0 flex-grow pr-6">
+                                                            <div className="flex justify-between items-start">
+                                                                <div className={`font-bold truncate leading-tight text-xs sm:text-sm ${isOvertime ? 'text-red-700' : 'text-slate-800'}`}>
+                                                                    {cn || my || log.name}
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center justify-between text-[9px] sm:text-[11px] mt-0.5 sm:mt-1 text-slate-500">
+                                                                <span className="truncate pr-1">{displayReason}</span>
+                                                                <span className={`${isOvertime ? 'text-red-500 font-bold' : 'font-mono'}`}>{formatTime(log.timeOut)}</span>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                    {!isSelected && <div className="bg-green-50 text-green-600 p-3 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity transform scale-90 group-hover:scale-100 shrink-0"><Icon name="log-in" size={24} /></div>}
-                                                    {isSelected && <Icon name="check-circle" size={28} className="text-blue-600 mr-2 shrink-0" />}
+                                                    {/* Hover to return visual cue */}
+                                                    <div className="bg-green-50 text-green-600 p-1.5 sm:p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity transform scale-90 group-hover:scale-100 shrink-0 absolute right-2 top-1/2 -translate-y-1/2 shadow-sm border border-green-100">
+                                                        <Icon name="log-in" size={16} className="sm:w-[20px] sm:h-[20px]" />
+                                                    </div>
                                                 </div>
                                             );
                                         })
                                     )}
                                 </div>
-                                {selectedReturnIds.length > 0 && (
-                                    <div className="absolute bottom-4 left-4 right-4 animate-in slide-in-from-bottom-4 z-20">
-                                        <button onClick={handleBatchReturn} className="w-full bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-2xl font-bold text-xl shadow-xl flex items-center justify-center gap-3 transform active:scale-95 transition-all"><Icon name="log-in" size={28} />让选中的 {selectedReturnIds.length} 人回来</button>
-                                    </div>
-                                )}
                             </div>
                         </div>
                         
-                        <div className="flex justify-center pt-2 gap-4 shrink-0">
-                            <button onClick={() => setView('history')} className="text-slate-400 hover:text-slate-600 flex items-center gap-2 px-6 py-3 rounded-full hover:bg-white hover:shadow-sm transition-all font-medium"><Icon name="file-text" size={20} /> 查看完整记录</button>
-                            <button onClick={() => setView('statistics')} className="text-blue-400 hover:text-blue-600 flex items-center gap-2 px-6 py-3 rounded-full hover:bg-white hover:shadow-sm transition-all font-medium"><Icon name="bar-chart-3" size={20} /> 统计分析 / Analisis</button>
-                        </div>
-
-                        {confirmReturnId && (
-                            <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 rounded-3xl animate-in fade-in">
-                                <div className="bg-white rounded-3xl p-8 shadow-2xl w-full max-w-lg text-center border-4 border-green-100 transform scale-100 animate-in zoom-in-95">
-                                    <div className="mb-6"><div className="mx-auto w-24 h-24 mb-4 relative"><div className="absolute inset-0 bg-green-100 rounded-full animate-ping opacity-20"></div><div className="bg-green-100 w-full h-full rounded-full flex items-center justify-center text-green-600 relative z-10"><Icon name="log-in" size={48} /></div></div><h3 className="text-3xl font-bold text-slate-800 mb-2">{activeLogs.find(l => l.id === confirmReturnId)?.name}</h3><p className="text-xl text-slate-500">已经回到班上了吗？</p></div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <button onClick={() => setConfirmReturnId(null)} className="py-4 rounded-2xl text-lg font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">还没 / Belum</button>
-                                        <button onClick={() => handleStudentReturn(confirmReturnId)} className="py-4 rounded-2xl text-lg font-bold text-white bg-green-600 hover:bg-green-700 shadow-lg transform active:scale-95 transition-all">回来了 / Sudah</button>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                );
-            };
-
-            const renderSelectStudent = () => {
-                const cls = getActiveClass();
-                const activeLogs = logs.filter(log => log.classId === activeClassId && !log.timeIn);
-                const absentees = getCurrentAbsentees(cls.id);
-
-                return (
-                    <div className="h-full flex flex-col animate-in slide-in-from-right relative">
-                        <div className="flex items-center mb-6 shrink-0">
-                            <button onClick={() => setView('dashboard')} className="bg-slate-100 p-3 rounded-full mr-4 hover:bg-slate-200 transition-colors"><Icon name="chevron-left" size={32} /></button>
-                            <div><h2 className="text-3xl font-bold text-slate-800">你叫什么名字？</h2><p className="text-slate-500 text-xl">Siapa nama anda? (Boleh pilih banyak)</p></div>
-                        </div>
-                        
-                        <div className="flex-grow overflow-y-auto pb-28 pr-2 custom-scrollbar">
-                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                                {cls.students.map(name => {
-                                    const isOut = activeLogs.find(log => log.name === name);
-                                    const isAbsent = absentees.includes(name);
-                                    const isSelected = selectedOutStudents.includes(name);
-                                    const isDisabled = !!isOut || isAbsent;
-                                    const { cn, my } = parseName(name);
-
-                                    return (
-                                        <button key={name} disabled={isDisabled} onClick={() => toggleStudentSelection(name)} className={`p-4 rounded-2xl text-left shadow-sm border-2 transition-all active:scale-95 flex items-center gap-3 relative overflow-hidden group ${isDisabled ? 'bg-slate-50 border-slate-100 opacity-60 cursor-not-allowed grayscale' : isSelected ? 'bg-blue-600 border-blue-600 text-white shadow-lg ring-2 ring-blue-200 transform scale-[1.02] z-10' : 'bg-white border-slate-100 hover:border-blue-400 hover:shadow-md text-slate-700'}`}>
-                                            <UserAvatar name={name} active={isSelected} />
-                                            <div className="flex-grow min-w-0">
-                                                {cn && <div className={`text-xl font-black leading-none mb-1 truncate ${isSelected ? 'text-white' : 'text-slate-800'}`}>{cn}</div>}
-                                                <div className={`font-bold truncate leading-tight ${isSelected ? 'text-blue-100' : cn ? 'text-xs text-slate-500 uppercase' : 'text-lg text-slate-800'}`}>{my || name}</div>
-                                                {isOut && <span className="text-xs font-bold bg-slate-200 text-slate-600 px-2 py-0.5 rounded inline-block mt-2">OUT</span>}
-                                                {isAbsent && <span className="text-xs font-bold bg-red-100 text-red-500 px-2 py-0.5 rounded inline-block mt-2">缺席</span>}
-                                            </div>
-                                            {isSelected && <div className="absolute top-2 right-2 bg-white rounded-full text-blue-600 p-0.5"><Icon name="check-circle" size={16} /></div>}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
-                        <div className="absolute bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-slate-200 p-6 flex justify-between items-center shadow-[0_-10px_40px_rgba(0,0,0,0.1)] rounded-t-3xl z-20">
-                            <div className="flex items-center gap-3">
-                                <div className="bg-blue-100 text-blue-600 font-black text-2xl w-12 h-12 rounded-full flex items-center justify-center">{selectedOutStudents.length}</div>
-                                <div className="text-slate-600 font-medium">已选人数<br/><span className="text-xs text-slate-400">Dipilih</span></div>
-                            </div>
-                            <button disabled={selectedOutStudents.length === 0} onClick={() => setView('select-reason')} className={`px-10 py-4 rounded-2xl font-bold text-xl flex items-center gap-3 transition-all transform shadow-xl ${selectedOutStudents.length > 0 ? 'bg-blue-600 hover:bg-blue-700 text-white hover:-translate-y-1 active:scale-95' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}>下一步 / Seterusnya <Icon name="arrow-right" /></button>
+                        {/* 底部功能栏 */}
+                        <div className="flex justify-center gap-3 sm:gap-4 shrink-0 pb-2 sm:pb-0 flex-wrap">
+                            <button onClick={() => setView('history')} className="text-slate-400 text-sm sm:text-base hover:text-slate-600 flex items-center gap-1.5 sm:gap-2 px-4 py-2 sm:px-6 sm:py-3 rounded-full hover:bg-white hover:shadow-sm transition-all font-medium"><Icon name="file-text" size={18} className="sm:w-[20px] sm:h-[20px]" /> <span className="hidden sm:inline">查看</span>完整记录</button>
+                            <button onClick={() => setView('statistics')} className="text-blue-400 text-sm sm:text-base hover:text-blue-600 flex items-center gap-1.5 sm:gap-2 px-4 py-2 sm:px-6 sm:py-3 rounded-full hover:bg-white hover:shadow-sm transition-all font-medium"><Icon name="bar-chart-3" size={18} className="sm:w-[20px] sm:h-[20px]" /> 统计分析 <span className="hidden sm:inline">/ Analisis</span></button>
                         </div>
                     </div>
                 );
             };
-
-            const renderSelectReason = () => (
-                <div className="h-full flex flex-col items-center justify-center max-w-5xl mx-auto w-full animate-in slide-in-from-right">
-                    <div className="text-center mb-10">
-                        <h2 className="text-4xl font-bold text-slate-800 mb-2">{selectedOutStudents.length > 1 ? `你们 ${selectedOutStudents.length} 人为什么出去？` : `${selectedOutStudents[0]} 为什么出去？`}</h2>
-                        <p className="text-slate-500 text-2xl">Kenapa hendak keluar?</p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-6 w-full px-8">
-                        {REASONS.map(reason => (
-                            <button key={reason.id} onClick={() => handleConfirmExit(reason)} className={`${reason.color} h-60 rounded-3xl flex flex-col items-center justify-center gap-4 transition-all border-b-8 active:border-b-0 active:translate-y-2 group relative overflow-hidden`}>
-                                <span className="text-7xl transform group-hover:scale-110 transition-transform duration-300">{reason.icon}</span>
-                                <div className="text-center z-10"><span className="block text-4xl font-bold">{reason.label}</span><span className="block text-xl opacity-70 mt-1">{reason.labelMy}</span></div>
-                            </button>
-                        ))}
-                    </div>
-                    <button onClick={() => setView('select-student')} className="mt-12 text-slate-400 text-lg hover:text-slate-600 underline font-medium">返回上一步</button>
-                </div>
-            );
 
             const renderAttendance = () => {
                 const cls = getActiveClass();
@@ -606,29 +723,29 @@
                 const tempSet = new Set(tempAbsentees);
 
                 return (
-                    <div className="h-full flex flex-col bg-white rounded-3xl shadow-lg overflow-hidden animate-in fade-in">
-                        <div className="bg-slate-800 text-white p-6 flex justify-between items-center shrink-0">
-                            <div className="flex items-center gap-4">
-                                <button onClick={() => setView('dashboard')} className="bg-slate-700 hover:bg-slate-600 p-2 rounded-xl transition-colors"><Icon name="chevron-left" size={24} /></button>
-                                <div><h2 className="text-xl font-bold">每日点名</h2><p className="text-slate-400 text-sm">Kehadiran Murid - {cls.name}</p></div>
+                    <div className="h-full flex flex-col bg-white rounded-2xl sm:rounded-3xl shadow-lg overflow-hidden animate-in fade-in duration-300">
+                        <div className="bg-slate-800 text-white p-4 sm:p-6 flex justify-between items-center shrink-0">
+                            <div className="flex items-center gap-3 sm:gap-4">
+                                <button onClick={() => setView('dashboard')} className="bg-slate-700 hover:bg-slate-600 p-2 rounded-xl transition-colors"><Icon name="chevron-left" size={20} className="sm:w-[24px] sm:h-[24px]" /></button>
+                                <div><h2 className="text-lg sm:text-xl font-bold">每日点名</h2><p className="text-slate-400 text-xs sm:text-sm">Kehadiran Murid - {cls.name}</p></div>
                             </div>
-                            <button onClick={() => handleSaveAttendance(tempAbsentees)} className="bg-green-600 hover:bg-green-700 px-6 py-2 rounded-xl font-bold shadow-lg transition-transform active:scale-95 flex items-center gap-2"><Icon name="save" size={20} /> 保存 / Simpan</button>
+                            <button onClick={() => handleSaveAttendance(tempAbsentees)} className="bg-green-600 hover:bg-green-700 px-4 py-2 sm:px-6 sm:py-2.5 rounded-xl font-bold text-sm sm:text-base shadow-lg transition-transform active:scale-95 flex items-center gap-2"><Icon name="save" size={18} className="sm:w-[20px] sm:h-[20px]" /> 保存 <span className="hidden sm:inline">/ Simpan</span></button>
                         </div>
-                        <div className="bg-blue-50 p-4 text-center text-blue-800 text-sm font-medium">请点击 <span className="text-red-600 font-bold">缺席</span> 的学生 / Sila tekan murid yang <span className="text-red-600 font-bold">TIDAK HADIR</span></div>
-                        <div className="flex-grow overflow-y-auto p-6 custom-scrollbar">
-                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                        <div className="bg-blue-50 p-3 sm:p-4 text-center text-blue-800 text-xs sm:text-sm font-medium">请点击 <span className="text-red-600 font-bold">缺席</span> 的学生 / Sila tekan murid yang <span className="text-red-600 font-bold">TIDAK HADIR</span></div>
+                        <div className="flex-grow overflow-y-auto p-4 sm:p-6 custom-scrollbar">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
                                 {cls.students.map(name => {
                                     const isAbsent = tempSet.has(name);
                                     const { cn, my } = parseName(name);
                                     return (
-                                        <button key={name} onClick={() => toggleTempAbsent(name)} className={`p-4 rounded-2xl text-left border-2 transition-all active:scale-95 flex items-center gap-3 relative overflow-hidden ${isAbsent ? 'bg-red-50 border-red-500 ring-2 ring-red-200' : 'bg-white border-slate-100 hover:border-blue-300'}`}>
-                                            <UserAvatar name={name} active={isAbsent} />
-                                            <div className="min-w-0">
-                                                {cn && <div className={`text-lg font-black leading-none mb-1 truncate ${isAbsent ? 'text-red-800' : 'text-slate-800'}`}>{cn}</div>}
-                                                <div className={`font-bold truncate text-sm ${isAbsent ? 'text-red-600' : 'text-slate-500'}`}>{my || name}</div>
-                                                {isAbsent && <span className="text-xs font-bold bg-red-100 text-red-600 px-2 py-0.5 rounded inline-block mt-2">缺席 / TH</span>}
+                                        <button key={name} onClick={() => toggleTempAbsent(name)} className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl text-left border-2 transition-all active:scale-95 flex items-center gap-2 sm:gap-3 relative overflow-hidden ${isAbsent ? 'bg-red-50 border-red-500 ring-2 ring-red-200' : 'bg-white border-slate-100 hover:border-blue-300'}`}>
+                                            <UserAvatar name={name} active={isAbsent} size="sm" />
+                                            <div className="min-w-0 pr-4">
+                                                {cn && <div className={`text-sm sm:text-lg font-black leading-none mb-1 truncate ${isAbsent ? 'text-red-800' : 'text-slate-800'}`}>{cn}</div>}
+                                                <div className={`font-bold truncate text-xs sm:text-sm ${isAbsent ? 'text-red-600' : 'text-slate-500'}`}>{my || name}</div>
+                                                {isAbsent && <span className="text-[10px] sm:text-xs font-bold bg-red-100 text-red-600 px-1.5 sm:px-2 py-0.5 rounded inline-block mt-1 sm:mt-2">缺席 / TH</span>}
                                             </div>
-                                            {isAbsent ? <div className="absolute top-2 right-2 text-red-500"><Icon name="check-square" size={20} /></div> : <div className="absolute top-2 right-2 text-slate-200"><Icon name="square" size={20} /></div>}
+                                            {isAbsent ? <div className="absolute top-2 right-2 text-red-500"><Icon name="check-square" size={16} className="sm:w-[20px] sm:h-[20px]" /></div> : <div className="absolute top-2 right-2 text-slate-200"><Icon name="square" size={16} className="sm:w-[20px] sm:h-[20px]" /></div>}
                                         </button>
                                     );
                                 })}
@@ -642,34 +759,34 @@
                 const cls = getActiveClass();
                 const classLogs = logs.filter(log => log.classId === activeClassId); 
                 return (
-                    <div className="h-full flex flex-col bg-white rounded-3xl shadow-lg overflow-hidden animate-in fade-in">
-                        <div className="bg-slate-800 text-white p-6 flex justify-between items-center shrink-0">
-                            <div className="flex items-center gap-4">
-                                <button onClick={() => setView('dashboard')} className="bg-slate-700 hover:bg-slate-600 p-2 rounded-xl transition-colors"><Icon name="chevron-left" size={24} /></button>
-                                <div><h2 className="text-xl font-bold">出入记录表</h2><p className="text-slate-400 text-sm">Rekod Keluar Masuk - {cls?.name}</p></div>
+                    <div className="h-full flex flex-col bg-white rounded-2xl sm:rounded-3xl shadow-lg overflow-hidden animate-in fade-in duration-300">
+                        <div className="bg-slate-800 text-white p-4 sm:p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center shrink-0 gap-4">
+                            <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
+                                <button onClick={() => setView('dashboard')} className="bg-slate-700 hover:bg-slate-600 p-2 rounded-xl transition-colors"><Icon name="chevron-left" size={20} className="sm:w-[24px] sm:h-[24px]" /></button>
+                                <div><h2 className="text-lg sm:text-xl font-bold">出入记录表</h2><p className="text-slate-400 text-xs sm:text-sm">Rekod - {cls?.name}</p></div>
                             </div>
-                            <div className="flex gap-2">
-                                <button onClick={() => window.print()} className="text-sm bg-blue-500/20 hover:bg-blue-500 text-blue-200 hover:text-white px-4 py-2 rounded-xl transition-all font-bold flex items-center gap-1"><Icon name="printer" size={16}/> 打印</button>
-                                <button onClick={handleExportClassLogsCSV} className="text-sm bg-green-500/20 hover:bg-green-500 text-green-200 hover:text-white px-4 py-2 rounded-xl transition-all font-bold flex items-center gap-1"><Icon name="download" size={16} /> 导出</button>
-                                <button onClick={handleClearHistory} className="text-sm bg-red-500/20 hover:bg-red-500 text-red-200 hover:text-white px-4 py-2 rounded-xl transition-all font-bold">清空</button>
+                            <div className="flex gap-2 w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0">
+                                <button onClick={() => window.print()} className="text-xs sm:text-sm bg-blue-500/20 hover:bg-blue-500 text-blue-200 hover:text-white px-3 sm:px-4 py-2 rounded-xl transition-all font-bold flex items-center gap-1 whitespace-nowrap"><Icon name="printer" size={14} className="sm:w-[16px] sm:h-[16px]"/> 打印</button>
+                                <button onClick={handleExportClassLogsCSV} className="text-xs sm:text-sm bg-green-500/20 hover:bg-green-500 text-green-200 hover:text-white px-3 sm:px-4 py-2 rounded-xl transition-all font-bold flex items-center gap-1 whitespace-nowrap"><Icon name="download" size={14} className="sm:w-[16px] sm:h-[16px]" /> 导出CSV</button>
+                                <button onClick={handleClearHistory} className="text-xs sm:text-sm bg-red-500/20 hover:bg-red-500 text-red-200 hover:text-white px-3 sm:px-4 py-2 rounded-xl transition-all font-bold whitespace-nowrap">清空</button>
                             </div>
                         </div>
-                        <div className="flex-grow overflow-auto custom-scrollbar">
-                            <table className="w-full text-left border-collapse min-w-[600px]">
-                                <thead className="bg-slate-50 sticky top-0 z-10 shadow-sm"><tr><th className="p-4 border-b font-bold text-slate-500 w-24">日期</th><th className="p-4 border-b font-bold text-slate-500">姓名</th><th className="p-4 border-b font-bold text-slate-500 w-32">外出</th><th className="p-4 border-b font-bold text-slate-500 w-32">回来</th><th className="p-4 border-b font-bold text-slate-500 w-24 text-center">厕所</th><th className="p-4 border-b font-bold text-slate-500">其他原因</th><th className="p-4 border-b font-bold text-slate-500">时长</th></tr></thead>
+                        <div className="flex-grow overflow-auto custom-scrollbar p-2 sm:p-0">
+                            <table className="w-full text-left border-collapse min-w-[600px] text-xs sm:text-sm">
+                                <thead className="bg-slate-50 sticky top-0 z-10 shadow-sm"><tr><th className="p-3 sm:p-4 border-b font-bold text-slate-500 w-20 sm:w-24">日期</th><th className="p-3 sm:p-4 border-b font-bold text-slate-500">姓名</th><th className="p-3 sm:p-4 border-b font-bold text-slate-500 w-24 sm:w-32">外出</th><th className="p-3 sm:p-4 border-b font-bold text-slate-500 w-24 sm:w-32">回来</th><th className="p-3 sm:p-4 border-b font-bold text-slate-500 w-16 sm:w-24 text-center">厕所</th><th className="p-3 sm:p-4 border-b font-bold text-slate-500">其他原因</th><th className="p-3 sm:p-4 border-b font-bold text-slate-500">时长</th></tr></thead>
                                 <tbody>
                                     {classLogs.length === 0 ? (
-                                        <tr><td colSpan="7" className="p-12 text-center text-slate-400 italic">暂无记录</td></tr>
+                                        <tr><td colSpan="7" className="p-8 sm:p-12 text-center text-slate-400 italic">暂无记录</td></tr>
                                     ) : (
                                         classLogs.map((log) => (
                                             <tr key={log.id} className="border-b hover:bg-slate-50 transition-colors">
-                                                <td className="p-4 text-sm text-slate-500">{formatDate(log.date)}</td>
-                                                <td className="p-4 font-bold text-slate-700">{log.name}</td>
-                                                <td className="p-4 text-red-600 font-mono">{formatTime(log.timeOut)}</td>
-                                                <td className="p-4 text-green-600 font-mono">{log.timeIn ? formatTime(log.timeIn) : '-'}</td>
-                                                <td className="p-4 text-center">{log.reasonId === 'tandas' ? <Icon name="check-circle" size={20} className="mx-auto text-green-500" /> : ''}</td>
-                                                <td className="p-4 text-sm text-slate-600">{log.reasonId !== 'tandas' ? (log.reasonDisplay || log.reason) : ''}</td>
-                                                <td className="p-4 text-sm text-slate-400 italic">{log.timeIn ? (() => { const diff = Math.round((new Date(log.timeIn) - new Date(log.timeOut)) / 1000 / 60); return `${diff} min`; })() : '...'}</td>
+                                                <td className="p-3 sm:p-4 text-slate-500">{formatDate(log.date)}</td>
+                                                <td className="p-3 sm:p-4 font-bold text-slate-700">{log.name}</td>
+                                                <td className="p-3 sm:p-4 text-red-600 font-mono">{formatTime(log.timeOut)}</td>
+                                                <td className="p-3 sm:p-4 text-green-600 font-mono">{log.timeIn ? formatTime(log.timeIn) : '-'}</td>
+                                                <td className="p-3 sm:p-4 text-center">{log.reasonId === 'tandas' ? <Icon name="check-circle" size={16} className="mx-auto text-green-500 sm:w-[20px] sm:h-[20px]" /> : ''}</td>
+                                                <td className="p-3 sm:p-4 text-slate-600">{log.reasonId !== 'tandas' ? (log.reasonDisplay || log.reason) : ''}</td>
+                                                <td className="p-3 sm:p-4 text-slate-400 italic">{log.timeIn ? (() => { const diff = Math.round((new Date(log.timeIn) - new Date(log.timeOut)) / 1000 / 60); return `${diff} min`; })() : '...'}</td>
                                             </tr>
                                         ))
                                     )}
@@ -711,32 +828,35 @@
                 const sortedDayKeys = ['周日/Ahad', '周一/Isnin', '周二/Selasa', '周三/Rabu', '周四/Khamis', '周五/Jumaat', '周六/Sabtu'];
 
                 return (
-                    <div className="h-full flex flex-col bg-white rounded-3xl shadow-lg overflow-hidden animate-in fade-in">
-                        <div className="bg-slate-800 text-white p-6 flex flex-col md:flex-row justify-between items-center shrink-0 gap-4">
-                            <div className="flex items-center gap-4 w-full md:w-auto"><button onClick={() => setView('dashboard')} className="bg-slate-700 hover:bg-slate-600 p-2 rounded-xl transition-colors"><Icon name="chevron-left" size={24} /></button><div><h2 className="text-xl font-bold">统计分析</h2><p className="text-slate-400 text-sm">Analisis Statistik - {cls?.name}</p></div></div>
-                            <div className="flex gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0">
-                               <button onClick={() => setStatsTab('overview')} className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 whitespace-nowrap ${statsTab === 'overview' ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}><Icon name="bar-chart-3" size={16}/> 概览</button>
-                               <button onClick={() => setStatsTab('time')} className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 whitespace-nowrap ${statsTab === 'time' ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}><Icon name="clock" size={16}/> 时段</button>
-                               <button onClick={() => setStatsTab('day')} className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 whitespace-nowrap ${statsTab === 'day' ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}><Icon name="calendar-days" size={16}/> 星期</button>
-                               <button onClick={() => setStatsTab('duration')} className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 whitespace-nowrap ${statsTab === 'duration' ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}><Icon name="timer" size={16}/> 时长</button>
+                    <div className="h-full flex flex-col bg-white rounded-2xl sm:rounded-3xl shadow-lg overflow-hidden animate-in fade-in duration-300">
+                        <div className="bg-slate-800 text-white p-4 sm:p-6 flex flex-col md:flex-row justify-between items-start md:items-center shrink-0 gap-4">
+                            <div className="flex items-center gap-3 sm:gap-4 w-full md:w-auto">
+                                <button onClick={() => setView('dashboard')} className="bg-slate-700 hover:bg-slate-600 p-2 rounded-xl transition-colors"><Icon name="chevron-left" size={20} className="sm:w-[24px] sm:h-[24px]" /></button>
+                                <div><h2 className="text-lg sm:text-xl font-bold">统计分析</h2><p className="text-slate-400 text-xs sm:text-sm">Analisis Statistik - {cls?.name}</p></div>
+                            </div>
+                            <div className="flex gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 custom-scrollbar">
+                               <button onClick={() => setStatsTab('overview')} className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 sm:gap-2 whitespace-nowrap ${statsTab === 'overview' ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}><Icon name="bar-chart-3" size={14} className="sm:w-[16px] sm:h-[16px]"/> 概览</button>
+                               <button onClick={() => setStatsTab('time')} className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 sm:gap-2 whitespace-nowrap ${statsTab === 'time' ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}><Icon name="clock" size={14} className="sm:w-[16px] sm:h-[16px]"/> 时段</button>
+                               <button onClick={() => setStatsTab('day')} className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 sm:gap-2 whitespace-nowrap ${statsTab === 'day' ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}><Icon name="calendar-days" size={14} className="sm:w-[16px] sm:h-[16px]"/> 星期</button>
+                               <button onClick={() => setStatsTab('duration')} className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 sm:gap-2 whitespace-nowrap ${statsTab === 'duration' ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}><Icon name="timer" size={14} className="sm:w-[16px] sm:h-[16px]"/> 时长</button>
                             </div>
                         </div>
-                        <div className="flex-grow overflow-auto p-6 custom-scrollbar bg-slate-50">
-                           {classLogs.length === 0 ? <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60"><Icon name="bar-chart-3" size={60} className="mb-4 text-slate-300" /><p className="text-xl font-bold">暂无统计数据</p></div> : (
+                        <div className="flex-grow overflow-auto p-4 sm:p-6 custom-scrollbar bg-slate-50">
+                           {classLogs.length === 0 ? <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60"><Icon name="bar-chart-3" size={48} className="mb-4 text-slate-300 sm:w-[60px] sm:h-[60px]" /><p className="text-lg sm:text-xl font-bold">暂无统计数据</p></div> : (
                              <React.Fragment>
                                {statsTab === 'overview' && (
                                  <React.Fragment>
-                                    <div className="flex justify-end mb-6"><div className="bg-white p-1 rounded-xl flex shadow-sm border border-slate-200"><button onClick={() => setStatsView('monthly')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${statsView === 'monthly' ? 'bg-slate-100 text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}>月度</button><button onClick={() => setStatsView('yearly')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${statsView === 'yearly' ? 'bg-slate-100 text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}>年度</button></div></div>
-                                    <div className="space-y-6">
+                                    <div className="flex justify-end mb-4 sm:mb-6"><div className="bg-white p-1 rounded-lg sm:rounded-xl flex shadow-sm border border-slate-200"><button onClick={() => setStatsView('monthly')} className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-md sm:rounded-lg text-xs sm:text-sm font-bold transition-all ${statsView === 'monthly' ? 'bg-slate-100 text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}>月度</button><button onClick={() => setStatsView('yearly')} className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-md sm:rounded-lg text-xs sm:text-sm font-bold transition-all ${statsView === 'yearly' ? 'bg-slate-100 text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}>年度</button></div></div>
+                                    <div className="space-y-4 sm:space-y-6">
                                         {sortedOverviewKeys.map(key => {
                                             const data = agg.overview[key];
                                             const sortedStudents = Object.entries(data.students).sort((a,b) => b[1] - a[1]).slice(0, 3);
                                             return (
-                                              <div key={key} className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-                                                 <div className="flex justify-between items-end mb-6 border-b border-slate-100 pb-4"><div><h3 className="text-2xl font-bold text-slate-800">{data.label}</h3><p className="text-slate-500 text-sm">{data.labelMy}</p></div><div className="text-right"><div className="text-4xl font-black text-blue-600">{data.total}</div><div className="text-xs text-slate-400 font-bold uppercase">Total</div></div></div>
-                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    <div><h4 className="font-bold text-slate-700 mb-3 text-sm flex items-center gap-2"><Icon name="pie-chart" size={16}/> 原因分布</h4><div className="space-y-2">{REASONS.map(r => (<div key={r.id} className="flex items-center text-xs"><div className="w-20 text-slate-500">{r.label}</div><div className="flex-grow bg-slate-100 h-2 rounded-full overflow-hidden"><div className="bg-blue-500 h-full" style={{width: `${(data.reasons[r.id]||0)/data.total*100}%`}}></div></div><div className="w-8 text-right font-bold text-slate-700">{data.reasons[r.id]||0}</div></div>))}</div></div>
-                                                    <div><h4 className="font-bold text-slate-700 mb-3 text-sm flex items-center gap-2"><Icon name="users" size={16}/> 高频学生</h4><div className="space-y-2">{sortedStudents.map(([name, count], i) => (<div key={name} className="flex justify-between items-center text-xs bg-slate-50 p-2 rounded"><span className="font-bold text-slate-700 truncate max-w-[150px]">{i+1}. {name}</span><span className="font-bold text-blue-600">{count}次</span></div>))}</div></div>
+                                              <div key={key} className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200">
+                                                 <div className="flex justify-between items-end mb-4 sm:mb-6 border-b border-slate-100 pb-3 sm:pb-4"><div><h3 className="text-xl sm:text-2xl font-bold text-slate-800">{data.label}</h3><p className="text-slate-500 text-xs sm:text-sm">{data.labelMy}</p></div><div className="text-right"><div className="text-3xl sm:text-4xl font-black text-blue-600">{data.total}</div><div className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase">Total</div></div></div>
+                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                                                    <div><h4 className="font-bold text-slate-700 mb-2 sm:mb-3 text-xs sm:text-sm flex items-center gap-1.5 sm:gap-2"><Icon name="pie-chart" size={14} className="sm:w-[16px] sm:h-[16px]"/> 原因分布</h4><div className="space-y-1.5 sm:space-y-2">{REASONS.map(r => (<div key={r.id} className="flex items-center text-[10px] sm:text-xs"><div className="w-16 sm:w-20 text-slate-500 truncate pr-1">{r.label}</div><div className="flex-grow bg-slate-100 h-1.5 sm:h-2 rounded-full overflow-hidden"><div className="bg-blue-500 h-full" style={{width: `${(data.reasons[r.id]||0)/data.total*100}%`}}></div></div><div className="w-6 sm:w-8 text-right font-bold text-slate-700">{data.reasons[r.id]||0}</div></div>))}</div></div>
+                                                    <div><h4 className="font-bold text-slate-700 mb-2 sm:mb-3 text-xs sm:text-sm flex items-center gap-1.5 sm:gap-2"><Icon name="users" size={14} className="sm:w-[16px] sm:h-[16px]"/> 高频学生</h4><div className="space-y-1.5 sm:space-y-2">{sortedStudents.map(([name, count], i) => (<div key={name} className="flex justify-between items-center text-[10px] sm:text-xs bg-slate-50 p-1.5 sm:p-2 rounded"><span className="font-bold text-slate-700 truncate max-w-[120px] sm:max-w-[150px]">{i+1}. {name}</span><span className="font-bold text-blue-600">{count}次</span></div>))}</div></div>
                                                  </div>
                                               </div>
                                             );
@@ -745,13 +865,45 @@
                                  </React.Fragment>
                                )}
                                {statsTab === 'time' && (
-                                 <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 min-h-[400px]"><h3 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2"><Icon name="clock" className="text-blue-500"/> 时段分析 (Time Analysis)</h3><div className="flex items-end gap-4 h-64 mt-10 overflow-x-auto pb-4">{sortedTimeKeys.map(time => { const count = agg.timeOfDay[time]; const max = Math.max(...Object.values(agg.timeOfDay)); const height = `${(count / max) * 100}%`; const [h] = time.split(':'); const hourInt = parseInt(h, 10); const ampm = hourInt >= 12 ? 'PM' : 'AM'; const hour12 = hourInt % 12 || 12; const displayTime = `${hour12} ${ampm}`; return (<div key={time} className="flex flex-col items-center group w-16 shrink-0"><div className="relative w-full flex justify-center h-full items-end"><div className="w-full bg-blue-100 rounded-t-lg group-hover:bg-blue-200 transition-colors relative" style={{ height: height }}><div className="absolute -top-8 left-1/2 -translate-x-1/2 font-bold text-blue-600">{count}</div></div></div><div className="mt-2 text-sm font-bold text-slate-500 whitespace-nowrap">{displayTime}</div></div>); })}</div><p className="text-center text-slate-400 mt-4 text-sm">显示每个小时的离开人次</p></div>
+                                 <div className="bg-white p-4 sm:p-8 rounded-xl sm:rounded-3xl shadow-sm border border-slate-200 min-h-[300px] sm:min-h-[400px]">
+                                    <h3 className="text-xl sm:text-2xl font-bold text-slate-800 mb-4 sm:mb-6 flex items-center gap-2"><Icon name="clock" className="text-blue-500 w-5 h-5 sm:w-6 sm:h-6"/> 时段分析 (Time Analysis)</h3>
+                                    <div className="flex items-end gap-2 sm:gap-4 h-48 sm:h-64 mt-6 sm:mt-10 overflow-x-auto pb-4 custom-scrollbar">
+                                        {sortedTimeKeys.map(time => { 
+                                            const count = agg.timeOfDay[time]; const max = Math.max(...Object.values(agg.timeOfDay)); const height = `${(count / max) * 100}%`; 
+                                            const [h] = time.split(':'); const hourInt = parseInt(h, 10); const ampm = hourInt >= 12 ? 'PM' : 'AM'; const hour12 = hourInt % 12 || 12; const displayTime = `${hour12} ${ampm}`; 
+                                            return (<div key={time} className="flex flex-col items-center group w-12 sm:w-16 shrink-0"><div className="relative w-full flex justify-center h-full items-end"><div className="w-full bg-blue-100 rounded-t-lg group-hover:bg-blue-200 transition-colors relative" style={{ height: height }}><div className="absolute -top-6 sm:-top-8 left-1/2 -translate-x-1/2 font-bold text-blue-600 text-xs sm:text-base">{count}</div></div></div><div className="mt-2 text-[10px] sm:text-sm font-bold text-slate-500 whitespace-nowrap">{displayTime}</div></div>); 
+                                        })}
+                                    </div>
+                                    <p className="text-center text-slate-400 mt-2 sm:mt-4 text-[10px] sm:text-sm">显示每个小时的离开人次</p>
+                                 </div>
                                )}
                                {statsTab === 'day' && (
-                                  <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 min-h-[400px]"><h3 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2"><Icon name="calendar-days" className="text-green-500"/> 星期趋势 (Day Trends)</h3><div className="space-y-4 mt-8">{sortedDayKeys.map(day => { const count = agg.dayOfWeek[day] || 0; const max = Math.max(...Object.values(agg.dayOfWeek), 1); const width = `${(count / max) * 100}%`; return (<div key={day} className="flex items-center gap-4"><div className="w-24 font-bold text-slate-600 text-sm text-right">{day.split('/')[0]}</div><div className="flex-grow bg-slate-100 h-8 rounded-full overflow-hidden relative"><div className="h-full bg-green-500 rounded-full flex items-center justify-end px-3 text-white font-bold text-xs transition-all duration-500" style={{ width: width }}>{count > 0 && count}</div></div></div>); })}</div></div>
+                                  <div className="bg-white p-4 sm:p-8 rounded-xl sm:rounded-3xl shadow-sm border border-slate-200 min-h-[300px] sm:min-h-[400px]">
+                                    <h3 className="text-xl sm:text-2xl font-bold text-slate-800 mb-4 sm:mb-6 flex items-center gap-2"><Icon name="calendar-days" className="text-green-500 w-5 h-5 sm:w-6 sm:h-6"/> 星期趋势 (Day Trends)</h3>
+                                    <div className="space-y-3 sm:space-y-4 mt-4 sm:mt-8">
+                                        {sortedDayKeys.map(day => { 
+                                            const count = agg.dayOfWeek[day] || 0; const max = Math.max(...Object.values(agg.dayOfWeek), 1); const width = `${(count / max) * 100}%`; 
+                                            return (<div key={day} className="flex items-center gap-2 sm:gap-4"><div className="w-16 sm:w-24 font-bold text-slate-600 text-[10px] sm:text-sm text-right leading-tight">{day.split('/')[0]}<br className="sm:hidden"/><span className="text-[8px] sm:text-[10px] opacity-70">{day.split('/')[1]}</span></div><div className="flex-grow bg-slate-100 h-6 sm:h-8 rounded-full overflow-hidden relative"><div className="h-full bg-green-500 rounded-full flex items-center justify-end px-2 sm:px-3 text-white font-bold text-[10px] sm:text-xs transition-all duration-500" style={{ width: width }}>{count > 0 && count}</div></div></div>); 
+                                        })}
+                                    </div>
+                                  </div>
                                )}
                                {statsTab === 'duration' && (
-                                 <div className="space-y-6"><div className="grid grid-cols-1 md:grid-cols-2 gap-6"><div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 flex flex-col items-center justify-center py-10"><div className="bg-orange-50 p-4 rounded-full text-orange-500 mb-4"><Icon name="timer" size={40}/></div><div className="text-5xl font-black text-slate-800 mb-1">{agg.duration.count > 0 ? Math.round(agg.duration.total / agg.duration.count) : 0} <span className="text-xl font-medium text-slate-400">min</span></div><div className="text-slate-500 font-bold">平均外出时长 / Purata Masa</div></div><div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 flex flex-col items-center justify-center py-10"><div className="bg-red-50 p-4 rounded-full text-red-500 mb-4"><Icon name="alert-octagon" size={40}/></div><div className="text-5xl font-black text-slate-800 mb-1">{agg.duration.longOut.length} <span className="text-xl font-medium text-slate-400">次</span></div><div className="text-slate-500 font-bold">超时记录 ({'>'}20分钟)</div></div></div><div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200"><h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><Icon name="settings" className="text-slate-400"/> 超时详情列表</h4><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-slate-500"><tr><th className="p-3 rounded-l-lg">学生</th><th className="p-3">原因</th><th className="p-3">时间</th><th className="p-3 rounded-r-lg">时长</th></tr></thead><tbody className="divide-y divide-slate-100">{agg.duration.longOut.length === 0 ? (<tr><td colSpan={4} className="p-4 text-center text-slate-400">暂无超时记录，表现很好！</td></tr>) : (agg.duration.longOut.map(l => (<tr key={l.id}><td className="p-3 font-bold text-slate-700">{l.name}</td><td className="p-3 text-slate-500">{l.reasonDisplay || l.reason}</td><td className="p-3 text-slate-400">{formatDate(l.date)}</td><td className="p-3 font-bold text-red-500">{l.duration} min</td></tr>)))}</tbody></table></div></div></div>
+                                 <div className="space-y-4 sm:space-y-6">
+                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                                         <div className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-3xl shadow-sm border border-slate-200 flex flex-col items-center justify-center py-6 sm:py-10"><div className="bg-orange-50 p-3 sm:p-4 rounded-full text-orange-500 mb-2 sm:mb-4"><Icon name="timer" size={32} className="sm:w-[40px] sm:h-[40px]"/></div><div className="text-3xl sm:text-5xl font-black text-slate-800 mb-1">{agg.duration.count > 0 ? Math.round(agg.duration.total / agg.duration.count) : 0} <span className="text-sm sm:text-xl font-medium text-slate-400">min</span></div><div className="text-slate-500 font-bold text-xs sm:text-base">平均外出时长 / Purata Masa</div></div>
+                                         <div className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-3xl shadow-sm border border-slate-200 flex flex-col items-center justify-center py-6 sm:py-10"><div className="bg-red-50 p-3 sm:p-4 rounded-full text-red-500 mb-2 sm:mb-4"><Icon name="alert-octagon" size={32} className="sm:w-[40px] sm:h-[40px]"/></div><div className="text-3xl sm:text-5xl font-black text-slate-800 mb-1">{agg.duration.longOut.length} <span className="text-sm sm:text-xl font-medium text-slate-400">次</span></div><div className="text-slate-500 font-bold text-xs sm:text-base">超时记录 ({'>'}20分钟)</div></div>
+                                     </div>
+                                     <div className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-3xl shadow-sm border border-slate-200">
+                                         <h4 className="font-bold text-slate-800 mb-3 sm:mb-4 flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base"><Icon name="settings" className="text-slate-400 w-4 h-4 sm:w-5 sm:h-5"/> 超时详情列表</h4>
+                                         <div className="overflow-x-auto custom-scrollbar pb-2">
+                                             <table className="w-full text-left text-xs sm:text-sm min-w-[400px]">
+                                                 <thead className="bg-slate-50 text-slate-500"><tr><th className="p-2 sm:p-3 rounded-l-lg">学生</th><th className="p-2 sm:p-3">原因</th><th className="p-2 sm:p-3">时间</th><th className="p-2 sm:p-3 rounded-r-lg">时长</th></tr></thead>
+                                                 <tbody className="divide-y divide-slate-100">{agg.duration.longOut.length === 0 ? (<tr><td colSpan={4} className="p-4 text-center text-slate-400">暂无超时记录，表现很好！</td></tr>) : (agg.duration.longOut.map(l => (<tr key={l.id}><td className="p-2 sm:p-3 font-bold text-slate-700">{l.name}</td><td className="p-2 sm:p-3 text-slate-500">{l.reasonDisplay || l.reason}</td><td className="p-2 sm:p-3 text-slate-400">{formatDate(l.date)}</td><td className="p-2 sm:p-3 font-bold text-red-500">{l.duration} min</td></tr>)))}</tbody>
+                                             </table>
+                                         </div>
+                                     </div>
+                                 </div>
                                )}
                              </React.Fragment>
                            )}
@@ -761,31 +913,104 @@
             };
 
             const renderAdmin = () => (
-                <div className="h-full flex flex-col bg-slate-50 animate-in fade-in">
-                    <div className="bg-slate-800 text-white p-6 flex justify-between items-center shrink-0"><h2 className="text-2xl font-bold flex items-center gap-3"><Icon name="settings" /> 新廊华小 - 后台管理</h2><button onClick={() => setView('landing')} className="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-xl text-sm font-bold">退出</button></div>
-                    <div className="flex-grow p-8 overflow-y-auto">
+                <div className="h-full flex flex-col bg-slate-50 animate-in fade-in duration-300">
+                    <div className="bg-slate-800 text-white p-4 sm:p-6 flex justify-between items-center shrink-0">
+                        <h2 className="text-lg sm:text-2xl font-bold flex items-center gap-2 sm:gap-3"><Icon name="settings" size={20} className="sm:w-[24px] sm:h-[24px]" /> 新廊华小 - 后台管理</h2>
+                        <button onClick={() => setView('landing')} className="bg-slate-700 hover:bg-slate-600 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold">退出</button>
+                    </div>
+                    <div className="flex-grow p-4 sm:p-6 md:p-8 overflow-y-auto custom-scrollbar">
                         {!editingClass ? (
-                            <div className="max-w-4xl mx-auto space-y-8">
-                                <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-8">
-                                    <div className="flex justify-between items-center mb-8"><h3 className="text-xl font-bold text-slate-700 flex items-center gap-2"><Icon name="users" size={20}/> 班级列表 (Class List)</h3><button onClick={handleAddClass} className="bg-green-600 hover:bg-green-700 text-white px-5 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg hover:shadow-green-200/50 transition-all"><Icon name="plus" size={20} /> 添加班级</button></div>
-                                    <div className="grid gap-4">
+                            <div className="max-w-4xl mx-auto space-y-6 sm:space-y-8">
+                                {/* 1. 系统设置 (上移) */}
+                                <div className="bg-white rounded-2xl sm:rounded-3xl shadow-sm border border-slate-100 p-5 sm:p-8 space-y-4 sm:space-y-6">
+                                    <h3 className="text-lg sm:text-xl font-bold text-slate-700 flex items-center gap-2 mb-2 sm:mb-6"><Icon name="settings" size={18} className="sm:w-[20px] sm:h-[20px]" /> 系统功能</h3>
+                                    
+                                    {/* 考试模式 */}
+                                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 sm:p-4 bg-slate-50 rounded-xl border gap-3 sm:gap-0">
+                                        <div className="flex gap-3 items-center">
+                                            <div className="p-2 bg-white rounded-full shadow-sm"><Icon name="lock" size={18} className="sm:w-[20px] sm:h-[20px]" /></div>
+                                            <div><div className="font-bold text-sm sm:text-base">考试模式</div><div className="text-[10px] sm:text-xs text-slate-500">禁止学生外出</div></div>
+                                        </div>
+                                        <button onClick={()=>{setIsExamMode(!isExamMode); setGlobalModal({type:'alert', title:'成功', message:'设置已保存'})}} className={`w-full sm:w-auto px-4 py-2 rounded-lg text-sm sm:text-base font-bold transition-all ${isExamMode?'bg-red-600 text-white':'bg-slate-200'}`}>{isExamMode?'已开启':'已关闭'}</button>
+                                    </div>
+
+                                    {/* 绑定设备 */}
+                                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 sm:p-4 bg-slate-50 rounded-xl border gap-3 sm:gap-0">
+                                        <div className="flex gap-3 items-center">
+                                            <div className="p-2 bg-white rounded-full shadow-sm"><Icon name="monitor" size={18} className="sm:w-[20px] sm:h-[20px]" /></div>
+                                            <div><div className="font-bold text-sm sm:text-base">设备绑定</div><div className="text-[10px] sm:text-xs text-slate-500">选择此屏幕显示的班级</div></div>
+                                        </div>
+                                        <select onChange={(e)=>{if(e.target.value) handleAssignClass(e.target.value); e.target.value='';}} className="w-full sm:w-auto p-2 border rounded-lg text-sm sm:text-base max-w-full sm:max-w-[150px]">
+                                            <option value="">+ 添加班级...</option>
+                                            {classes.map(c => <option key={c.id} value={c.id} disabled={assignedClassIds.includes(c.id)}>{c.name}</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2 px-2 sm:px-4">
+                                        {assignedClassIds.map(id => { const c = classes.find(x=>x.id===id); return c ? <span key={id} onClick={()=>handleUnassignClass(id)} className="px-2 py-1 sm:px-3 sm:py-1 bg-blue-100 text-blue-700 rounded-full text-xs sm:text-sm font-bold flex gap-1 items-center cursor-pointer">{c.name} <Icon name="x" size={12} className="sm:w-[14px] sm:h-[14px]" /></span> : null; })}
+                                    </div>
+
+                                    {/* 数据管理 */}
+                                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-4 border-t">
+                                        <button onClick={handleExportData} className="flex-1 py-2.5 sm:py-3 bg-slate-100 rounded-lg sm:rounded-xl text-sm sm:text-base font-bold flex justify-center items-center gap-2"><Icon name="download" size={16} className="sm:w-[18px] sm:h-[18px]" /> 备份数据</button>
+                                        <label className="flex-1 py-2.5 sm:py-3 bg-slate-100 rounded-lg sm:rounded-xl text-sm sm:text-base font-bold flex justify-center items-center gap-2 cursor-pointer"><Icon name="upload" size={16} className="sm:w-[18px] sm:h-[18px]" /> 恢复备份<input type="file" className="hidden" onChange={handleImportData}/></label>
+                                    </div>
+                                </div>
+
+                                {/* 2. 班级列表 (下移) */}
+                                <div className="bg-white rounded-2xl sm:rounded-3xl shadow-sm border border-slate-100 p-5 sm:p-8">
+                                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-3 sm:gap-0">
+                                        <h3 className="text-lg sm:text-xl font-bold text-slate-700 flex items-center gap-2"><Icon name="users" size={18} className="sm:w-[20px] sm:h-[20px]" /> 班级列表 (Class List)</h3>
+                                        <div className="flex gap-2 w-full sm:w-auto">
+                                            {/* 同步云端名单按钮移至此处 */}
+                                            <button onClick={fetchStudentsFromCloud} className="flex-1 sm:flex-none bg-yellow-100 hover:bg-yellow-200 text-yellow-700 px-3 sm:px-4 py-2 rounded-lg font-bold flex justify-center items-center gap-2 text-xs sm:text-sm transition-colors">
+                                                <Icon name="cloud-download" size={14} className="sm:w-[16px] sm:h-[16px]" /> <span className="hidden sm:inline">同步云端名单</span><span className="sm:hidden">同步</span>
+                                            </button>
+                                            <button onClick={()=>{const newC={id:Date.now().toString(), name:'新班级', teacher:'Guru', students:[]}; setClasses([...classes,newC]); setEditingClass(newC);}} className="flex-1 sm:flex-none bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold flex justify-center items-center gap-2 text-sm sm:text-base transition-colors shadow-sm"><Icon name="plus" size={16} className="sm:w-[18px] sm:h-[18px]" /> 添加</button>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                                         {classes.map(cls => (
-                                            <div key={cls.id} className="bg-slate-50 p-6 rounded-2xl border border-slate-200 shadow-sm flex justify-between items-center group hover:border-blue-300 transition-all">
-                                                <div><h4 className="text-xl font-bold text-slate-800">{cls.name}</h4><p className="text-slate-500 flex items-center gap-2"><Icon name="user" size={14}/> {cls.teacher} <span className="mx-1">•</span> {cls.students.length} murid</p></div>
-                                                <div className="flex gap-3"><button onClick={() => setEditingClass(cls)} className="px-4 py-2 bg-blue-100 text-blue-700 rounded-xl font-bold hover:bg-blue-200 flex items-center gap-2"><Icon name="pen-tool" size={16}/> 编辑</button><button onClick={() => handleDeleteClass(cls.id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-xl"><Icon name="trash-2" size={20} /></button></div>
+                                            <div key={cls.id} className="bg-slate-50 p-3 sm:p-4 rounded-xl border border-slate-200 flex justify-between items-center group hover:border-blue-300 transition-all">
+                                                <div className="min-w-0 pr-2">
+                                                    <div className="font-bold text-base sm:text-lg truncate">{cls.name}</div>
+                                                    <div className="text-slate-500 text-[10px] sm:text-sm truncate">{cls.teacher} • {cls.students.length} 人</div>
+                                                </div>
+                                                <div className="flex gap-1.5 sm:gap-2 shrink-0">
+                                                    <button onClick={() => setEditingClass(cls)} className="p-1.5 sm:p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"><Icon name="pen-tool" size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
+                                                    <button onClick={() => handleDeleteClass(cls.id)} className="p-1.5 sm:p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"><Icon name="trash-2" size={16} className="sm:w-[18px] sm:h-[18px]" /></button>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
-                                <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-8 space-y-8">
-                                    <h3 className="text-xl font-bold text-slate-700 flex items-center gap-2 mb-6"><Icon name="settings" size={20}/> 系统设置 (Settings)</h3>
-                                    <div className="flex items-start gap-4 border-b border-slate-100 pb-8"><div className="bg-red-50 p-3 rounded-full text-red-600"><Icon name="lock" size={32} /></div><div className="flex-grow"><h3 className="text-xl font-bold text-slate-800 mb-1">系统控制</h3><p className="text-slate-500 text-sm mb-4">全局控制系统功能，如考试模式等。</p><div className="flex items-center justify-between bg-slate-50 p-4 rounded-xl border border-slate-200"><div className="flex items-center gap-3"><div className={`w-12 h-12 rounded-full flex items-center justify-center ${isExamMode ? 'bg-red-500 text-white' : 'bg-slate-200 text-slate-400'}`}><Icon name="alert-octagon" size={24} /></div><div><div className="font-bold text-slate-800">考试模式 / Mod Peperiksaan</div><div className="text-sm text-slate-500">开启后将禁止学生外出。</div></div></div><button onClick={() => setIsExamMode(!isExamMode)} className={`px-6 py-2 rounded-lg font-bold transition-all ${isExamMode ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>{isExamMode ? '已开启 / ON' : '已关闭 / OFF'}</button></div></div></div>
-                                    <div className="flex items-start gap-4 border-b border-slate-100 pb-8"><div className="bg-blue-50 p-3 rounded-full text-blue-600"><Icon name="save" size={32} /></div><div className="flex-grow"><h3 className="text-xl font-bold text-slate-800 mb-1">数据备份与恢复</h3><div className="flex items-center gap-3 mb-4"><p className="text-slate-500 text-sm">定期备份数据到电脑。</p><span className="text-xs bg-slate-100 text-slate-500 px-2 py-1 rounded">当前总记录: {logs.length}</span></div><div className="flex gap-4"><button onClick={handleExportData} className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl font-bold transition-colors"><Icon name="download" size={18} /> 备份数据</button><label className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl font-bold transition-colors cursor-pointer"><Icon name="upload" size={18} /> 恢复数据<input type="file" accept=".json" onChange={handleImportData} className="hidden" /></label></div></div></div>
-                                    <div className="flex items-start gap-4"><div className="bg-blue-50 p-3 rounded-full text-blue-600"><Icon name="monitor" size={32} /></div><div className="flex-grow"><h3 className="text-xl font-bold text-slate-800 mb-1">本设备绑定设置</h3><p className="text-slate-500 text-sm mb-4">选择此屏幕显示的班级。</p><div className="mb-4"><select onChange={(e) => { handleAssignClass(e.target.value); e.target.value = ""; }} className="p-3 border-2 border-slate-200 rounded-xl font-medium text-slate-700 focus:border-blue-500 outline-none w-full max-w-md bg-white"><option value="">+ 添加班级到此设备...</option>{classes.map(cls => (<option key={cls.id} value={cls.id} disabled={assignedClassIds.includes(cls.id)}>{cls.name} {assignedClassIds.includes(cls.id) ? '(已添加)' : ''}</option>))}</select></div><div className="flex flex-wrap gap-2">{assignedClassIds.length > 0 ? assignedClassIds.map(id => { const cls = classes.find(c => c.id === id); return cls ? (<div key={id} className="bg-green-50 text-green-700 border border-green-200 px-4 py-2 rounded-xl flex items-center gap-2 font-bold shadow-sm"><Icon name="check-circle" size={16} /> {cls.name}<button onClick={() => handleUnassignClass(id)} className="hover:bg-green-200 rounded-full p-1 transition-colors"><Icon name="x" size={16} /></button></div>) : null; }) : (<span className="text-slate-400 italic text-sm">暂未绑定任何班级</span>)}</div></div></div>
-                                </div>
                             </div>
                         ) : (
-                            <div className="bg-white max-w-3xl mx-auto rounded-3xl shadow-sm border border-slate-100 p-8"><h3 className="text-2xl font-bold mb-6 text-slate-800">编辑班级</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6"><div><label className="block text-sm font-bold text-slate-500 mb-2">班级名称</label><input value={editingClass.name} onChange={e => setEditingClass({...editingClass, name: e.target.value})} className="w-full p-3 border-2 border-slate-200 rounded-xl font-bold text-lg focus:border-blue-500 outline-none" /></div><div><label className="block text-sm font-bold text-slate-500 mb-2">班主任</label><input value={editingClass.teacher} onChange={e => setEditingClass({...editingClass, teacher: e.target.value})} className="w-full p-3 border-2 border-slate-200 rounded-xl font-bold text-lg focus:border-blue-500 outline-none" /></div></div><div className="mb-8"><div className="flex justify-between items-end mb-2"><label className="block text-sm font-bold text-slate-500">学生名单 (每行一个)</label><label className="cursor-pointer text-blue-600 hover:text-blue-700 text-sm font-bold flex items-center gap-1 bg-blue-50 px-3 py-1 rounded-lg transition-colors border border-blue-200 hover:bg-blue-50"><Icon name="upload" size={16} /> 导入 CSV<input type="file" accept=".csv,.txt" onChange={handleImportStudentCSV} className="hidden" /></label></div><textarea value={editingClass.students.join('\n')} onChange={e => setEditingClass({...editingClass, students: e.target.value.split('\n')})} className="w-full h-64 p-4 border-2 border-slate-200 rounded-xl font-mono text-sm focus:border-blue-500 outline-none" placeholder="在此粘贴学生名单..." /><p className="text-xs text-slate-400 mt-2 text-right">共 {editingClass.students.filter(s => s.trim()).length} 名学生</p></div><div className="flex justify-end gap-4"><button onClick={() => setEditingClass(null)} className="px-6 py-3 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200">取消</button><button onClick={() => handleSaveClass(editingClass)} className="px-6 py-3 rounded-xl font-bold text-white bg-blue-600 hover:bg-blue-700 flex items-center gap-2"><Icon name="save" size={20} /> 保存修改</button></div></div>
+                            // 编辑班级界面
+                            <div className="bg-white max-w-2xl mx-auto rounded-2xl sm:rounded-3xl shadow-sm border border-slate-100 p-5 sm:p-8 animate-in zoom-in-95">
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-3 sm:gap-0">
+                                    <h3 className="text-xl sm:text-2xl font-bold text-slate-800">编辑班级: {editingClass.name}</h3>
+                                    {/* 云端同步按钮已移除 */}
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
+                                    <div><label className="block text-xs sm:text-sm font-bold text-slate-500 mb-1">班级名称</label><input value={editingClass.name} onChange={e=>setEditingClass({...editingClass, name:e.target.value})} className="w-full p-2 sm:p-3 border rounded-lg sm:rounded-xl font-bold text-sm sm:text-base focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all"/></div>
+                                    <div><label className="block text-xs sm:text-sm font-bold text-slate-500 mb-1">班主任</label><input value={editingClass.teacher} onChange={e=>setEditingClass({...editingClass, teacher:e.target.value})} className="w-full p-2 sm:p-3 border rounded-lg sm:rounded-xl font-bold text-sm sm:text-base focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all"/></div>
+                                </div>
+
+                                <div className="mb-4 sm:mb-6">
+                                    <div className="flex justify-between items-end mb-1 sm:mb-2">
+                                        <label className="block text-xs sm:text-sm font-bold text-slate-500">学生名单 (每行一个)</label>
+                                        <label className="text-blue-600 font-bold text-[10px] sm:text-sm cursor-pointer hover:underline flex items-center gap-1"><Icon name="upload" size={12} className="sm:w-[14px] sm:h-[14px]" /> 导入 CSV/TXT<input type="file" className="hidden" onChange={handleImportStudentCSV}/></label>
+                                    </div>
+                                    <textarea value={editingClass.students.join('\n')} onChange={e=>setEditingClass({...editingClass, students:e.target.value.split('\n')})} className="w-full h-48 sm:h-64 p-3 sm:p-4 border rounded-lg sm:rounded-xl font-mono text-xs sm:text-sm resize-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500 outline-none custom-scrollbar transition-all" placeholder="Ali bin Abu&#10;Tan Xiao Ming&#10;..."></textarea>
+                                    <p className="text-right text-[10px] sm:text-xs text-slate-400 mt-1 sm:mt-2">共 {editingClass.students.filter(s=>s.trim()).length} 名学生</p>
+                                </div>
+
+                                <div className="flex gap-3 sm:gap-4 flex-col sm:flex-row">
+                                    <button onClick={() => setEditingClass(null)} className="flex-1 py-2.5 sm:py-3 bg-slate-100 text-slate-600 rounded-lg sm:rounded-xl text-sm sm:text-base font-bold hover:bg-slate-200 transition-colors">取消</button>
+                                    <button onClick={() => { handleSaveClass(editingClass); setEditingClass(null); }} className="flex-1 py-2.5 sm:py-3 bg-blue-600 text-white rounded-lg sm:rounded-xl text-sm sm:text-base font-bold hover:bg-blue-700 shadow-md hover:shadow-lg transition-all active:scale-95">保存修改</button>
+                                </div>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -797,8 +1022,6 @@
                     {view === 'landing' && renderLanding()}
                     {view === 'admin' && renderAdmin()}
                     {view === 'dashboard' && renderDashboard()}
-                    {view === 'select-student' && renderSelectStudent()}
-                    {view === 'select-reason' && renderSelectReason()}
                     {view === 'history' && renderHistory()}
                     {view === 'attendance' && renderAttendance()}
                     {view === 'statistics' && renderStatistics()}
