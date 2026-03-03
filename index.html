@@ -9,7 +9,7 @@
     <link rel="icon" type="image/png" sizes="192x192" href="https://em-content.zobj.net/source/apple/419/door_1f6aa.png">
     <link rel="apple-touch-icon" href="https://em-content.zobj.net/source/apple/419/door_1f6aa.png">
     
-    <!-- 1. 核心库 (CDN) -->
+     <!-- 1. 核心库 (CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
@@ -51,8 +51,10 @@
 
         // ==========================================
         // ⚠️ 请在这里填入您的 Google Apps Script URL
+        // 注意：这里只能放网址，请不要将学生名单粘贴到这里。
+        // 学生名单请在系统的“后台管理 -> 编辑班级 -> 导入CSV”中导入。
         // ==========================================
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxYXYBnU5uzfzkM_F71KFxQyeTcNOTEeuQQaY6wgVmDCa5Leu0b_zZk5E5uC26vGD4pXQ/exec"; 
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/YOUR_SCRIPT_URL_HERE/exec"; 
 
         // --- 独立时钟组件 ---
         const DigitalClock = memo(() => {
@@ -195,6 +197,7 @@
             
             const [showCustomReasonInput, setShowCustomReasonInput] = useState(false);
             const [customReasonText, setCustomReasonText] = useState('');
+            const [confirmReturnId, setConfirmReturnId] = useState(null); 
             const [globalModal, setGlobalModal] = useState(null); 
             const [adminPasswordInput, setAdminPasswordInput] = useState('');
             const [showAdminLogin, setShowAdminLogin] = useState(false);
@@ -202,6 +205,7 @@
             const [statsView, setStatsView] = useState('monthly'); 
             const [statsTab, setStatsTab] = useState('overview'); 
             const [isExamMode, setIsExamMode] = useState(false); 
+            const [mobileTab, setMobileTab] = useState('out'); // 新增：移动端标签页状态 ('out' 或 'in')
 
             // 数据加载
             useEffect(() => {
@@ -250,7 +254,7 @@
                 }
             };
 
-            const handleEnterClass = (classId) => { setActiveClassId(classId); setSelectedOutStudents([]); setSelectedReturnIds([]); setView('dashboard'); };
+            const handleEnterClass = (classId) => { setActiveClassId(classId); setSelectedOutStudents([]); setSelectedReturnIds([]); setView('dashboard'); setMobileTab('out'); }; // 重置 mobileTab
             const handleAdminLogin = () => { if (adminPasswordInput === "1234") { setView('admin'); setShowAdminLogin(false); setAdminPasswordInput(''); } else { setGlobalModal({ type: 'alert', title: 'Error', message: 'Wrong Password.' }); } };
             
             // 优化：点选学生
@@ -285,6 +289,7 @@
                 setSelectedOutStudents([]); // 关键：清空选中状态
                 setShowCustomReasonInput(false); 
                 setCustomReasonText('');
+                setMobileTab('in'); // 外出成功后，在移动端自动切换到在外列表
             };
 
             const handleConfirmExit = (reasonObj) => { 
@@ -307,6 +312,28 @@
                     return log;
                 });
                 setLogs(updatedLogs); 
+                
+                // 如果在外名单空了，自动切回点选外出标签
+                if (logs.filter(log => log.classId === activeClassId && !log.timeIn).length <= 1) {
+                    setMobileTab('out');
+                }
+            };
+
+            const handleBatchReturn = () => {
+                if (selectedReturnIds.length === 0) return;
+                setGlobalModal({ type: 'confirm', title: '确认回来', message: `确认让选中的 ${selectedReturnIds.length} 人回来？`, onConfirm: () => {
+                    const now = new Date();
+                    const updatedLogs = logs.map(log => {
+                        if (selectedReturnIds.includes(log.id)) {
+                            const dur = Math.round((now - new Date(log.timeOut))/60000) + ' min';
+                            const timeInStr = now.toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit', hour12:true});
+                            syncToCloud({ action: 'log_in', id: log.id, timeIn: timeInStr, duration: dur });
+                            return { ...log, timeIn: now.toISOString() };
+                        }
+                        return log;
+                    });
+                    setLogs(updatedLogs); setSelectedReturnIds([]);
+                }});
             };
 
             const handleSaveAttendance = (list) => {
@@ -509,8 +536,11 @@
                 const presentCount = totalStudents - absentCount;
                 const attendancePercentage = totalStudents > 0 ? ((presentCount / totalStudents) * 100).toFixed(0) : "0";
 
+                // 小屏幕选项卡切换逻辑处理块 (在外列表 / 点选外出)
+                const isMobile = window.innerWidth < 1024; // lg breakpoint in tailwind
+
                 return (
-                    <div className="flex flex-col h-full space-y-4 sm:space-y-6 relative animate-in fade-in">
+                    <div className="flex flex-col h-full space-y-4 sm:space-y-6 relative animate-in fade-in duration-300">
                         {/* Header */}
                         <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm border border-slate-100 flex justify-between items-center shrink-0 flex-wrap gap-4">
                             <div className="flex items-center gap-3 sm:gap-4">
@@ -546,11 +576,32 @@
                             </div>
                         </div>
 
-                        {/* Layout: 左边 3/4 学生选择, 右边 1/4 正在外面 (手机端变为上下堆叠) */}
+                        {/* Layout: 左边 3/4 学生选择, 右边 1/4 正在外面 (手机端变为标签页折叠) */}
                         <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 flex-grow overflow-hidden">
                             
-                            {/* 左侧: 学生网格区 */}
-                            <div className="lg:w-3/4 bg-white rounded-2xl sm:rounded-3xl shadow-sm border border-slate-100 flex flex-col relative overflow-hidden flex-grow lg:flex-grow-0 h-full">
+                            {/* --- 手机端特有：折叠标签页头部 --- */}
+                            <div className="lg:hidden flex p-1 bg-slate-200 rounded-xl shrink-0 mt-2">
+                                <button 
+                                    onClick={() => setMobileTab('out')}
+                                    className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${mobileTab === 'out' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:bg-slate-300'}`}
+                                >
+                                    点选外出
+                                </button>
+                                <button 
+                                    onClick={() => setMobileTab('in')}
+                                    className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-1 ${mobileTab === 'in' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:bg-slate-300'}`}
+                                >
+                                    正在外面
+                                    {activeLogs.length > 0 && (
+                                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${mobileTab === 'in' ? 'bg-blue-100 text-blue-700' : 'bg-red-500 text-white'}`}>
+                                            {activeLogs.length}
+                                        </span>
+                                    )}
+                                </button>
+                            </div>
+
+                            {/* 左侧 3/4: 学生网格区 (手机端受 mobileTab 控制显示) */}
+                            <div className={`lg:w-3/4 bg-white rounded-2xl sm:rounded-3xl shadow-sm border border-slate-100 flex flex-col relative overflow-hidden flex-grow lg:flex-grow-0 lg:h-full ${mobileTab === 'out' ? 'flex' : 'hidden lg:flex'}`}>
                                 {isExamMode ? (
                                     <div className="flex flex-col items-center justify-center h-full bg-slate-50 text-slate-400 opacity-80 p-6 text-center">
                                         <div className="bg-slate-200 p-6 sm:p-8 rounded-full shadow-inner mb-4"><Icon name="lock" size={64} className="sm:w-[80px] sm:h-[80px]" /></div>
@@ -560,18 +611,19 @@
                                     </div>
                                 ) : (
                                     <React.Fragment>
-                                        <div className="p-3 sm:p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
+                                        {/* 桌面端才显示头部，手机端用上面的 Tab 代替了 */}
+                                        <div className="hidden lg:flex p-4 border-b border-slate-100 justify-between items-center bg-slate-50/50 shrink-0">
                                             <div>
-                                                <h2 className="text-lg sm:text-xl font-bold text-slate-800">点选学生外出</h2>
-                                                <p className="text-slate-500 text-[10px] sm:text-xs">Sila pilih nama murid (Boleh pilih banyak)</p>
+                                                <h2 className="text-xl font-bold text-slate-800">点选学生外出</h2>
+                                                <p className="text-slate-500 text-xs">Sila pilih nama murid (Boleh pilih banyak)</p>
                                             </div>
-                                            <div className="text-xs sm:text-sm font-bold text-slate-400 bg-slate-100 px-2 py-1 sm:px-3 sm:py-1 rounded-lg">
+                                            <div className="text-sm font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-lg">
                                                 共 {cls.students.length} 人
                                             </div>
                                         </div>
                                         
                                         <div className="flex-grow overflow-y-auto p-3 sm:p-4 custom-scrollbar pb-36 sm:pb-32">
-                                            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3">
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3">
                                                 {cls.students.map(name => {
                                                     const isOut = activeLogs.find(log => log.name === name);
                                                     const isAbsent = absentees.includes(name);
@@ -646,8 +698,8 @@
                                 )}
                             </div>
 
-                            {/* 右侧: 正在外面列表 */}
-                            <div className="lg:w-1/4 bg-slate-50 rounded-2xl sm:rounded-3xl border border-slate-200 p-4 sm:p-5 flex flex-col relative overflow-hidden h-[300px] sm:h-[400px] lg:h-auto shrink-0">
+                            {/* 右侧 1/4: 正在外面列表 (手机端受 mobileTab 控制显示) */}
+                            <div className={`lg:w-1/4 bg-slate-50 rounded-2xl sm:rounded-3xl border border-slate-200 p-4 sm:p-5 flex flex-col relative overflow-hidden h-[300px] sm:h-[400px] lg:h-auto shrink-0 flex-grow lg:flex-grow-0 ${mobileTab === 'in' ? 'flex' : 'hidden lg:flex'}`}>
                                 <div className="flex items-center justify-between mb-3 sm:mb-4 shrink-0">
                                     <h2 className="text-base sm:text-lg font-bold text-slate-700 flex items-center gap-2">
                                         <span className="relative flex h-2 sm:h-2.5 w-2 sm:w-2.5">
@@ -658,7 +710,7 @@
                                     </h2>
                                 </div>
 
-                                <div className="flex-grow overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                                <div className="flex-grow overflow-y-auto space-y-2.5 sm:space-y-2 pr-1 custom-scrollbar">
                                     {activeLogs.length === 0 ? (
                                         <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60">
                                             <div className="bg-white p-3 sm:p-4 rounded-full shadow-sm mb-2 sm:mb-3"><Icon name="check-circle" size={32} className="text-green-400 sm:w-[40px] sm:h-[40px]" /></div>
@@ -685,18 +737,18 @@
                                                         </div>
                                                         <div className="min-w-0 flex-grow pr-6">
                                                             <div className="flex justify-between items-start">
-                                                                <div className={`font-bold truncate leading-tight text-xs sm:text-sm ${isOvertime ? 'text-red-700' : 'text-slate-800'}`}>
+                                                                <div className={`font-bold truncate leading-tight text-sm ${isOvertime ? 'text-red-700' : 'text-slate-800'}`}>
                                                                     {cn || my || log.name}
                                                                 </div>
                                                             </div>
-                                                            <div className="flex items-center justify-between text-[9px] sm:text-[11px] mt-0.5 sm:mt-1 text-slate-500">
+                                                            <div className="flex items-center justify-between text-[10px] sm:text-[11px] mt-0.5 sm:mt-1 text-slate-500">
                                                                 <span className="truncate pr-1">{displayReason}</span>
                                                                 <span className={`${isOvertime ? 'text-red-500 font-bold' : 'font-mono'}`}>{formatTime(log.timeOut)}</span>
                                                             </div>
                                                         </div>
                                                     </div>
                                                     {/* Hover to return visual cue */}
-                                                    <div className="bg-green-50 text-green-600 p-1.5 sm:p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity transform scale-90 group-hover:scale-100 shrink-0 absolute right-2 top-1/2 -translate-y-1/2 shadow-sm border border-green-100">
+                                                    <div className="bg-green-50 text-green-600 p-1.5 sm:p-2 rounded-lg lg:opacity-0 group-hover:opacity-100 transition-opacity transform lg:scale-90 group-hover:scale-100 shrink-0 absolute right-2 top-1/2 -translate-y-1/2 shadow-sm border border-green-100">
                                                         <Icon name="log-in" size={16} className="sm:w-[20px] sm:h-[20px]" />
                                                     </div>
                                                 </div>
