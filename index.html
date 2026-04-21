@@ -206,6 +206,90 @@
             const [statsTab, setStatsTab] = useState('overview'); 
             const [isExamMode, setIsExamMode] = useState(false); 
             const [mobileTab, setMobileTab] = useState('out'); // 新增：移动端标签页状态 ('out' 或 'in')
+            
+            // 新增：低年级下沉模式状态
+            const [isLowAngleMode, setIsLowAngleMode] = useState(false);
+
+            // 1. 新增：分钟级定时器，每分钟检查一次是否需要自动结账
+            const [minuteTicker, setMinuteTicker] = useState(Date.now());
+            useEffect(() => {
+                const timer = setInterval(() => setMinuteTicker(Date.now()), 60000); 
+                return () => clearInterval(timer);
+            }, []);
+
+            // 2. 新增：智能自动结账逻辑 (基于上下午班的下课/放学时间)
+            useEffect(() => {
+                if (logs.length === 0) return;
+
+                const now = new Date();
+                const todayStr = now.toLocaleDateString('en-CA');
+                const currentMinutes = now.getHours() * 60 + now.getMinutes();
+                
+                // 定义新廊华小 SJK(C) Ladang Grisek 的下课和放学时间边界 (转换为当天的分钟数)
+                const boundaries = [
+                    { time: 9 * 60 + 30, label: '早上班下课' },  // 9:30 AM = 570
+                    { time: 12 * 60 + 55, label: '早上班放学' }, // 12:55 PM = 775
+                    { time: 15 * 60 + 30, label: '下午班下课' }, // 3:30 PM = 930
+                    { time: 18 * 60 + 20, label: '下午班放学' }  // 6:20 PM = 1100
+                ];
+
+                let hasUpdates = false;
+                const updatedLogs = logs.map(log => {
+                    if (log.timeIn) return log; // 已经回来的跳过
+
+                    const outDate = new Date(log.timeOut);
+                    const isSameDay = outDate.toLocaleDateString('en-CA') === todayStr;
+                    const outMinutes = outDate.getHours() * 60 + outDate.getMinutes();
+
+                    // 找出学生外出后的第一个时间边界
+                    const nextBoundary = boundaries.find(b => outMinutes < b.time);
+                    
+                    let shouldCheckout = false;
+                    let checkoutDate = null;
+                    let checkoutLabel = '';
+
+                    if (!isSameDay) {
+                        // 如果是跨日的遗留记录
+                        shouldCheckout = true;
+                        checkoutDate = new Date(outDate);
+                        if (nextBoundary) {
+                            // 设为昨天的打铃时间
+                            checkoutDate.setHours(Math.floor(nextBoundary.time / 60), nextBoundary.time % 60, 0, 0);
+                            checkoutLabel = `自动结账 (${nextBoundary.label})`;
+                        } else {
+                            checkoutDate.setMinutes(checkoutDate.getMinutes() + 30); // 兜底：放学后外出的算30分钟
+                            checkoutLabel = `自动结账 (跨日)`;
+                        }
+                    } else if (nextBoundary && currentMinutes >= nextBoundary.time) {
+                        // 如果是今天，且当前时间已经到达或超过了下课/放学时间
+                        shouldCheckout = true;
+                        checkoutDate = new Date(now);
+                        // 精确把归队时间设为打铃的那一刻
+                        checkoutDate.setHours(Math.floor(nextBoundary.time / 60), nextBoundary.time % 60, 0, 0);
+                        checkoutLabel = `自动结账 (${nextBoundary.label})`;
+                    }
+
+                    if (shouldCheckout) {
+                        hasUpdates = true;
+                        const dur = Math.round((checkoutDate - outDate)/60000) + ' min';
+                        const timeInStr = checkoutDate.toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit', hour12:true});
+                        
+                        // 同步状态到云端
+                        syncToCloud({ action: 'log_in', id: log.id, timeIn: timeInStr, duration: dur });
+
+                        return {
+                            ...log,
+                            timeIn: checkoutDate.toISOString(),
+                            reasonDisplay: (log.reasonDisplay || log.reason) + ' - ' + checkoutLabel
+                        };
+                    }
+                    return log;
+                });
+
+                if (hasUpdates) {
+                    setLogs(updatedLogs);
+                }
+            }, [minuteTicker, logs]);
 
             // 数据加载
             useEffect(() => {
@@ -216,6 +300,10 @@
                     const savedAtt = localStorage.getItem('school_attendance'); if(savedAtt) setAttendanceData(JSON.parse(savedAtt));
                     const savedIds = localStorage.getItem('device_assigned_class_ids'); if(savedIds) setAssignedClassIds(JSON.parse(savedIds));
                     const savedExam = localStorage.getItem('school_exam_mode'); if(savedExam) setIsExamMode(JSON.parse(savedExam));
+                    
+                    // 读取低年级模式记忆
+                    const savedLowAngle = localStorage.getItem('school_low_angle_mode'); 
+                    if(savedLowAngle) setIsLowAngleMode(JSON.parse(savedLowAngle));
                 } catch (error) { console.error("Load Error", error); }
             }, []);
 
@@ -225,6 +313,7 @@
             useEffect(() => { localStorage.setItem('school_attendance', JSON.stringify(attendanceData)); }, [attendanceData]);
             useEffect(() => { localStorage.setItem('school_exam_mode', JSON.stringify(isExamMode)); }, [isExamMode]);
             useEffect(() => { localStorage.setItem('device_assigned_class_ids', JSON.stringify(assignedClassIds)); }, [assignedClassIds]);
+            useEffect(() => { localStorage.setItem('school_low_angle_mode', JSON.stringify(isLowAngleMode)); }, [isLowAngleMode]); // 保存低年级模式
 
             const getActiveClass = () => classes.find(c => c.id === activeClassId);
             const formatTime = (dateObj) => dateObj ? new Date(dateObj).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '-';
@@ -617,12 +706,31 @@
                                                 <h2 className="text-xl font-bold text-slate-800">点选学生外出</h2>
                                                 <p className="text-slate-500 text-xs">Sila pilih nama murid (Boleh pilih banyak)</p>
                                             </div>
-                                            <div className="text-sm font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-lg">
-                                                共 {cls.students.length} 人
+                                            <div className="flex items-center gap-3">
+                                                {/* 新增：降下高度按钮 */}
+                                                <button
+                                                    onClick={() => setIsLowAngleMode(!isLowAngleMode)}
+                                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${isLowAngleMode ? 'bg-blue-100 text-blue-700 shadow-inner' : 'bg-white text-slate-500 hover:bg-slate-100 border border-slate-200'}`}
+                                                >
+                                                    <Icon name={isLowAngleMode ? "arrow-up-to-line" : "arrow-down-to-line"} size={16} />
+                                                    {isLowAngleMode ? '恢复正常排版' : '降下高度 (低年级)'}
+                                                </button>
+                                                <div className="text-sm font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-lg">
+                                                    共 {cls.students.length} 人
+                                                </div>
                                             </div>
                                         </div>
                                         
                                         <div className="flex-grow overflow-y-auto p-3 sm:p-4 custom-scrollbar pb-36 sm:pb-32">
+                                            {/* 新增：低年级模式的占位空白区 */}
+                                            {isLowAngleMode && (
+                                                <div className="h-[35vh] w-full flex items-end justify-center pb-8 shrink-0">
+                                                    <div className="text-slate-400 font-bold text-sm bg-slate-100 px-4 py-2 rounded-full flex items-center gap-2 opacity-60">
+                                                        <Icon name="arrow-up" size={16} /> 向上滑动查看更多
+                                                    </div>
+                                                </div>
+                                            )}
+
                                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3">
                                                 {cls.students.map(name => {
                                                     const isOut = activeLogs.find(log => log.name === name);
@@ -708,6 +816,32 @@
                                         </span>
                                         在外 ({activeLogs.length})
                                     </h2>
+                                    {/* 新增：一键全归按钮 (超过1人在外时显示) */}
+                                    {activeLogs.length > 1 && (
+                                        <button 
+                                            onClick={() => {
+                                                setGlobalModal({
+                                                    type: 'confirm', title: '一键归队', message: `确定要让目前在外的 ${activeLogs.length} 名学生全部归队吗？`,
+                                                    onConfirm: () => {
+                                                        const now = new Date();
+                                                        const updatedLogs = logs.map(log => {
+                                                            if (log.classId === activeClassId && !log.timeIn) {
+                                                                const dur = Math.round((now - new Date(log.timeOut))/60000) + ' min';
+                                                                const timeInStr = now.toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit', hour12:true});
+                                                                syncToCloud({ action: 'log_in', id: log.id, timeIn: timeInStr, duration: dur });
+                                                                return { ...log, timeIn: now.toISOString(), reasonDisplay: (log.reasonDisplay || log.reason) + ' (一键全归)' };
+                                                            }
+                                                            return log;
+                                                        });
+                                                        setLogs(updatedLogs);
+                                                    }
+                                                });
+                                            }}
+                                            className="text-[10px] sm:text-xs font-bold bg-slate-200 hover:bg-slate-300 text-slate-600 px-2.5 py-1 rounded-md transition-colors active:scale-95 shadow-sm border border-slate-300"
+                                        >
+                                            一键全归
+                                        </button>
+                                    )}
                                 </div>
 
                                 <div className="flex-grow overflow-y-auto space-y-2.5 sm:space-y-2 pr-1 custom-scrollbar">
@@ -873,7 +1007,22 @@
                     const dayLabel = days[date.getDay()];
                     if (!agg.dayOfWeek[dayLabel]) agg.dayOfWeek[dayLabel] = 0;
                     agg.dayOfWeek[dayLabel]++;
-                    if (log.timeIn) { const dur = (new Date(log.timeIn) - timeOut) / 1000 / 60; agg.duration.total += dur; agg.duration.count++; if (dur > 20) agg.duration.longOut.push({ ...log, duration: Math.round(dur) }); }
+                    
+                    if (log.timeIn) { 
+                        let dur = (new Date(log.timeIn) - timeOut) / 1000 / 60; 
+                        
+                        // 新增：过滤极端异常值 (如外出超过3小时/180分钟未被拦截的特殊情况)
+                        const isAbnormal = dur > 180;
+                        if (isAbnormal) dur = 30; // 将异常值视为30分钟，避免拉爆平均统计
+                        
+                        agg.duration.total += dur; 
+                        agg.duration.count++; 
+                        
+                        // 超过20分钟且非异常数据，才列入超时黑名单
+                        if (dur > 20 && !isAbnormal) {
+                            agg.duration.longOut.push({ ...log, duration: Math.round(dur) }); 
+                        }
+                    }
                 });
                 const sortedOverviewKeys = Object.keys(agg.overview).sort().reverse();
                 const sortedTimeKeys = Object.keys(agg.timeOfDay).sort();
