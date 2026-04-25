@@ -816,8 +816,8 @@
                                         </span>
                                         在外 ({activeLogs.length})
                                     </h2>
-                                    {/* 新增：一键全归按钮 (超过1人在外时显示) */}
-                                    {activeLogs.length > 1 && (
+                                    {/* 优化：只要有1个人以上在外面，就显示一键全归按钮，并增加图标 */}
+                                    {activeLogs.length > 0 && (
                                         <button 
                                             onClick={() => {
                                                 setGlobalModal({
@@ -837,14 +837,24 @@
                                                     }
                                                 });
                                             }}
-                                            className="text-[10px] sm:text-xs font-bold bg-slate-200 hover:bg-slate-300 text-slate-600 px-2.5 py-1 rounded-md transition-colors active:scale-95 shadow-sm border border-slate-300"
+                                            className="text-[10px] sm:text-xs font-bold bg-white hover:bg-slate-100 text-slate-600 px-2.5 py-1.5 rounded-md transition-colors active:scale-95 shadow-sm border border-slate-200 flex items-center gap-1"
                                         >
+                                            <Icon name="users" size={12} />
                                             一键全归
                                         </button>
                                     )}
                                 </div>
 
                                 <div className="flex-grow overflow-y-auto space-y-2.5 sm:space-y-2 pr-1 custom-scrollbar">
+                                    {/* 新增：右侧在外名单也加入低年级下沉占位区 (仅在有学生时显示) */}
+                                    {isLowAngleMode && activeLogs.length > 0 && (
+                                        <div className="h-[35vh] w-full flex items-end justify-center pb-4 shrink-0">
+                                            <div className="text-slate-400 font-bold text-xs bg-slate-200/60 px-3 py-1.5 rounded-full flex items-center gap-1 opacity-70">
+                                                <Icon name="arrow-up" size={14} /> 向上滑动
+                                            </div>
+                                        </div>
+                                    )}
+                                    
                                     {activeLogs.length === 0 ? (
                                         <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60">
                                             <div className="bg-white p-3 sm:p-4 rounded-full shadow-sm mb-2 sm:mb-3"><Icon name="check-circle" size={32} className="text-green-400 sm:w-[40px] sm:h-[40px]" /></div>
