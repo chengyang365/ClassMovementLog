@@ -500,44 +500,46 @@
                 const activeLogs = logs.filter(log => log.classId === activeClassId && !log.timeIn);
                 const absentees = getCurrentAbsentees(cls.id);
                 const totalStudents = cls.students.length; const absentCount = absentees.length; const presentCount = totalStudents - absentCount;
-                
+                const attendancePercentage = totalStudents > 0 ? ((presentCount / totalStudents) * 100).toFixed(0) : "0";
+
                 return (
                     <div className="flex flex-col h-full space-y-4 sm:space-y-6 relative animate-in fade-in duration-300">
                         {/* 顶部通栏 */}
-                        <div className="glass-panel rounded-2xl sm:rounded-3xl p-4 sm:p-5 flex justify-between items-center shrink-0 flex-wrap gap-4 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)]">
+                        <div className="glass-panel rounded-2xl sm:rounded-3xl p-4 sm:p-5 lg:p-6 flex justify-between items-center shrink-0 flex-wrap gap-4 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)]">
                             <div className="flex items-center gap-3 sm:gap-5">
-                                <button onClick={() => setView('landing')} className="bg-white p-2.5 sm:p-3 rounded-xl sm:rounded-2xl hover:bg-slate-50 text-slate-500 border border-slate-200 transition-all shadow-sm hover:shadow">
-                                    <Icon name="arrow-left" size={24} />
+                                <button onClick={() => setView('landing')} className="bg-white p-2.5 sm:p-3 lg:p-4 rounded-xl sm:rounded-2xl lg:rounded-3xl hover:bg-slate-50 text-slate-500 border border-slate-200 transition-all shadow-sm hover:shadow">
+                                    <Icon name="arrow-left" size={28} className="lg:w-8 lg:h-8" />
                                 </button>
-                                <div className="flex items-center gap-4">
-                                    <div className="hidden sm:flex w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl text-white items-center justify-center font-black text-xl shadow-inner border border-blue-400/50">
+                                <div className="flex items-center gap-4 lg:gap-6">
+                                    <div className="hidden sm:flex w-12 h-12 lg:w-16 lg:h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl lg:rounded-3xl text-white items-center justify-center font-black text-xl lg:text-3xl shadow-inner border border-blue-400/50">
                                         {cls.name}
                                     </div>
                                     <div>
-                                        <div className="flex items-center gap-2 mb-0.5">
-                                            <span className="bg-slate-200/60 text-slate-600 text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded border border-slate-300/50">新廊华小 SJK(C) Ladang Grisek</span>
-                                            {isExamMode && <span className="bg-red-100 text-red-600 text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded border border-red-200 flex items-center gap-1 animate-pulse-soft"><Icon name="alert-octagon" size={12}/> 考试模式锁定</span>}
+                                        <div className="flex items-center gap-2 mb-0.5 lg:mb-1.5">
+                                            <span className="bg-slate-200/60 text-slate-600 text-[10px] sm:text-xs lg:text-sm font-bold px-2.5 py-0.5 lg:py-1 rounded border border-slate-300/50">新廊华小 SJK (C) Ladang Grisek</span>
+                                            {isExamMode && <span className="bg-red-100 text-red-600 text-[10px] sm:text-xs lg:text-sm font-bold px-2.5 py-0.5 lg:py-1 rounded border border-red-200 flex items-center gap-1 animate-pulse-soft"><Icon name="alert-octagon" size={14}/> 考试模式锁定</span>}
                                         </div>
                                         <h1 className="text-xl sm:text-2xl font-black text-slate-800 leading-tight tracking-tight sm:hidden">{cls.name}</h1>
-                                        <div className="flex items-center gap-2 text-slate-500 mt-1">
-                                            <span className="text-xs sm:text-sm font-bold text-slate-600 truncate max-w-[120px] sm:max-w-none"><Icon name="user" size={14} className="inline mr-1 text-slate-400"/>{cls.teacher}</span>
-                                            <span className="text-slate-300">|</span>
-                                            <button onClick={() => { setTempAbsentees(getCurrentAbsentees(cls.id)); setView('attendance'); }} className="flex items-center gap-1 text-indigo-600 bg-indigo-50/80 border border-indigo-100 px-2 py-1 sm:px-3 rounded-lg hover:bg-indigo-100 transition-colors font-bold text-[10px] sm:text-xs shadow-sm active:scale-95">
-                                                <Icon name="check-square" size={14} /> 班级点名
+                                        <div className="flex items-center gap-2 text-slate-500 mt-1 lg:mt-2">
+                                            <span className="text-xs sm:text-sm lg:text-lg font-bold text-slate-600 truncate max-w-[120px] sm:max-w-none"><Icon name="user" size={16} className="inline mr-1 text-slate-400 lg:w-5 lg:h-5"/>{cls.teacher}</span>
+                                            <span className="text-slate-300 lg:mx-2">|</span>
+                                            <button onClick={() => { setTempAbsentees(getCurrentAbsentees(cls.id)); setView('attendance'); }} className="flex items-center gap-1 text-indigo-600 bg-indigo-50/80 border border-indigo-100 px-3 py-1.5 lg:px-5 lg:py-2 rounded-lg lg:rounded-xl hover:bg-indigo-100 transition-colors font-bold text-xs sm:text-sm lg:text-base shadow-sm active:scale-95">
+                                                <Icon name="check-square" size={16} className="lg:w-5 lg:h-5" /> 班级点名
                                             </button>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-4 sm:gap-8 ml-auto">
+                            <div className="flex items-center gap-4 sm:gap-8 lg:gap-12 ml-auto">
                                 <div className="text-right hidden md:block">
-                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">今日出席</div>
-                                    <div className="flex items-baseline justify-end gap-1">
-                                        <span className="text-2xl sm:text-3xl font-black text-slate-800">{presentCount}<span className="text-slate-300 text-lg font-medium mx-1">/</span><span className="text-lg text-slate-500">{totalStudents}</span></span>
+                                    <div className="text-[10px] lg:text-sm font-bold text-slate-400 uppercase tracking-widest mb-1">今日出席</div>
+                                    <div className="flex items-baseline justify-end gap-1 lg:gap-2">
+                                        <span className="text-2xl sm:text-3xl lg:text-5xl font-black text-slate-800">{presentCount}<span className="text-slate-300 text-lg lg:text-3xl font-medium mx-1 lg:mx-2">/</span><span className="text-lg lg:text-2xl text-slate-500">{totalStudents}</span></span>
+                                        <span className={`text-sm sm:text-base lg:text-2xl font-bold ml-1 lg:ml-2 ${parseFloat(attendancePercentage) === 100 ? 'text-emerald-500' : 'text-blue-500'}`}>({attendancePercentage}%)</span>
                                     </div>
-                                    {absentCount > 0 && <div className="text-[10px] text-red-500 font-bold mt-0.5 bg-red-50 inline-block px-1.5 py-0.5 rounded border border-red-100">{absentCount} 人缺席</div>}
+                                    {absentCount > 0 && <div className="text-[10px] lg:text-sm text-red-500 font-bold mt-1 bg-red-50 inline-block px-2 py-0.5 lg:py-1 rounded border border-red-100">{absentCount} 人缺席</div>}
                                 </div>
-                                <div className="h-8 w-px bg-slate-300/50 hidden md:block"></div>
+                                <div className="h-8 lg:h-12 w-px bg-slate-300/50 hidden md:block"></div>
                                 <DigitalClock />
                             </div>
                         </div>
@@ -546,10 +548,10 @@
                             
                             {/* 手机端 Tab */}
                             <div className="lg:hidden flex p-1 glass-panel rounded-xl shrink-0 mt-0">
-                                <button onClick={() => setMobileTab('out')} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${mobileTab === 'out' ? 'bg-white text-blue-600 shadow-sm border border-slate-200' : 'text-slate-500 hover:bg-slate-200/50'}`}>点选外出</button>
-                                <button onClick={() => setMobileTab('in')} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-1 ${mobileTab === 'in' ? 'bg-white text-blue-600 shadow-sm border border-slate-200' : 'text-slate-500 hover:bg-slate-200/50'}`}>
+                                <button onClick={() => setMobileTab('out')} className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all ${mobileTab === 'out' ? 'bg-white text-blue-600 shadow-sm border border-slate-200' : 'text-slate-500 hover:bg-slate-200/50'}`}>点选外出</button>
+                                <button onClick={() => setMobileTab('in')} className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-1 ${mobileTab === 'in' ? 'bg-white text-blue-600 shadow-sm border border-slate-200' : 'text-slate-500 hover:bg-slate-200/50'}`}>
                                     正在外面
-                                    {activeLogs.length > 0 && <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-black ${mobileTab === 'in' ? 'bg-blue-100 text-blue-700' : 'bg-red-500 text-white shadow-sm shadow-red-500/30'}`}>{activeLogs.length}</span>}
+                                    {activeLogs.length > 0 && <span className={`px-2 py-0.5 rounded-md text-[10px] font-black ${mobileTab === 'in' ? 'bg-blue-100 text-blue-700' : 'bg-red-500 text-white shadow-sm shadow-red-500/30'}`}>{activeLogs.length}</span>}
                                 </button>
                             </div>
 
@@ -557,37 +559,37 @@
                             <div className={`lg:w-3/4 glass-panel rounded-2xl sm:rounded-[2rem] flex flex-col relative overflow-hidden flex-grow lg:flex-grow-0 lg:h-full ${mobileTab === 'out' ? 'flex' : 'hidden lg:flex'}`}>
                                 {isExamMode ? (
                                     <div className="flex flex-col items-center justify-center h-full text-slate-400 opacity-90 p-6 text-center">
-                                        <div className="bg-white/50 p-6 sm:p-8 rounded-full shadow-sm border border-white mb-6 backdrop-blur-md"><Icon name="lock" size={64} className="text-slate-300" /></div>
-                                        <h2 className="text-3xl sm:text-4xl font-black text-slate-600 mb-2 tracking-tight">考试进行中</h2>
-                                        <p className="text-lg sm:text-xl text-slate-500 font-medium">Peperiksaan Sedang Dijalankan</p>
+                                        <div className="bg-white/50 p-8 lg:p-12 rounded-full shadow-sm border border-white mb-6 backdrop-blur-md"><Icon name="lock" size={80} className="text-slate-300 lg:w-24 lg:h-24" /></div>
+                                        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-600 mb-3 tracking-tight">考试进行中</h2>
+                                        <p className="text-lg sm:text-xl lg:text-2xl text-slate-500 font-medium">Peperiksaan Sedang Dijalankan</p>
                                     </div>
                                 ) : (
                                     <React.Fragment>
-                                        <div className="hidden lg:flex p-5 border-b border-white/50 justify-between items-center bg-white/40 shrink-0 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+                                        <div className="hidden lg:flex p-5 lg:p-6 border-b border-white/50 justify-between items-center bg-white/40 shrink-0 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
                                             <div>
-                                                <h2 className="text-xl font-black text-slate-800 tracking-tight">点选学生外出 <span className="text-sm font-medium text-slate-500 ml-2 font-normal">Sila pilih nama murid</span></h2>
+                                                <h2 className="text-xl lg:text-3xl font-black text-slate-800 tracking-tight">点选学生外出 <span className="text-sm lg:text-lg font-medium text-slate-500 ml-3 font-normal">Sila pilih nama murid</span></h2>
                                             </div>
-                                            <div className="flex items-center gap-3">
-                                                <button onClick={() => setIsLowAngleMode(!isLowAngleMode)} className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-all ${isLowAngleMode ? 'bg-indigo-100 text-indigo-700 shadow-inner border border-indigo-200' : 'bg-white text-slate-500 hover:text-slate-800 hover:shadow border border-slate-200'}`}>
-                                                    <Icon name={isLowAngleMode ? "arrow-up-to-line" : "arrow-down-to-line"} size={16} />
-                                                    {isLowAngleMode ? '恢复正常高度' : 'IFPD 下沉模式 (适合低年级)'}
+                                            <div className="flex items-center gap-4">
+                                                <button onClick={() => setIsLowAngleMode(!isLowAngleMode)} className={`flex items-center gap-2 px-5 py-2.5 lg:px-6 lg:py-3 rounded-xl lg:rounded-2xl text-sm lg:text-base font-bold transition-all ${isLowAngleMode ? 'bg-indigo-100 text-indigo-700 shadow-inner border border-indigo-200' : 'bg-white text-slate-500 hover:text-slate-800 hover:shadow border border-slate-200'}`}>
+                                                    <Icon name={isLowAngleMode ? "arrow-up-to-line" : "arrow-down-to-line"} size={20} className="lg:w-6 lg:h-6" />
+                                                    {isLowAngleMode ? '恢复正常高度' : 'IFPD 下沉模式 (低年级)'}
                                                 </button>
-                                                <div className="text-sm font-bold text-slate-500 bg-white border border-slate-200 px-3 py-2 rounded-xl shadow-sm">
+                                                <div className="text-sm lg:text-base font-bold text-slate-500 bg-white border border-slate-200 px-4 py-2.5 lg:px-5 lg:py-3 rounded-xl lg:rounded-2xl shadow-sm">
                                                     全班 {cls.students.length} 人
                                                 </div>
                                             </div>
                                         </div>
                                         
-                                        <div className="flex-grow overflow-y-auto p-4 sm:p-6 custom-scrollbar pb-40 sm:pb-36 relative">
+                                        <div className="flex-grow overflow-y-auto p-4 sm:p-6 lg:p-8 custom-scrollbar pb-40 lg:pb-48 relative">
                                             {isLowAngleMode && (
-                                                <div className="h-[40vh] w-full flex items-end justify-center pb-8 shrink-0">
-                                                    <div className="text-slate-400 font-bold text-sm bg-white/50 px-6 py-3 rounded-full flex items-center gap-2 border border-white/60 shadow-sm">
-                                                        <Icon name="arrow-up" size={16} className="animate-bounce" /> 滑动这里查看上方学生名单
+                                                <div className="h-[40vh] w-full flex items-end justify-center pb-10 shrink-0">
+                                                    <div className="text-slate-400 font-bold text-sm lg:text-base bg-white/50 px-6 py-3 lg:px-8 lg:py-4 rounded-full flex items-center gap-2 border border-white/60 shadow-sm">
+                                                        <Icon name="arrow-up" size={20} className="animate-bounce lg:w-6 lg:h-6" /> 滑动这里查看上方学生名单
                                                     </div>
                                                 </div>
                                             )}
 
-                                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 relative z-10">
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-5 relative z-10">
                                                 {cls.students.map(name => {
                                                     const isOut = activeLogs.find(log => log.name === name);
                                                     const isAbsent = absentees.includes(name);
@@ -597,7 +599,7 @@
 
                                                     return (
                                                         <button key={name} disabled={isDisabled} onClick={() => toggleStudentSelection(name)}
-                                                            className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl text-left border-2 transition-all duration-300 active:scale-95 flex items-center gap-3 relative overflow-hidden group outline-none focus:ring-4 focus:ring-blue-500/20 ${
+                                                            className={`p-3 sm:p-4 lg:p-5 rounded-xl sm:rounded-2xl lg:rounded-[1.25rem] text-left border-2 transition-all duration-300 active:scale-95 flex items-center gap-3 lg:gap-4 relative overflow-hidden group outline-none focus:ring-4 focus:ring-blue-500/20 ${
                                                                 isDisabled 
                                                                     ? 'bg-slate-50/50 border-transparent opacity-50 cursor-not-allowed grayscale' 
                                                                     : isSelected 
@@ -608,16 +610,16 @@
                                                             <div className="shrink-0">
                                                                 <UserAvatar name={name} active={isSelected} size="md" />
                                                             </div>
-                                                            <div className="flex-grow min-w-0 pr-4 sm:pr-6">
-                                                                {cn && <div className={`text-sm sm:text-base font-black leading-tight mb-0.5 truncate ${isSelected ? 'text-white' : 'text-slate-800'}`}>{cn}</div>}
-                                                                <div className={`font-bold text-[10px] sm:text-[11px] truncate leading-tight ${isSelected ? 'text-blue-100' : cn ? 'text-slate-500 uppercase' : 'text-xs sm:text-sm text-slate-800'}`}>
+                                                            <div className="flex-grow min-w-0 pr-4 sm:pr-6 lg:pr-8">
+                                                                {cn && <div className={`text-base sm:text-lg lg:text-2xl font-black leading-tight mb-1 truncate ${isSelected ? 'text-white' : 'text-slate-800'}`}>{cn}</div>}
+                                                                <div className={`font-bold text-xs sm:text-sm lg:text-base truncate leading-tight ${isSelected ? 'text-blue-100' : cn ? 'text-slate-500 uppercase' : 'text-sm sm:text-base lg:text-xl text-slate-800'}`}>
                                                                     {my || name}
                                                                 </div>
                                                             </div>
-                                                            <div className="absolute right-2.5 sm:right-3 top-1/2 -translate-y-1/2 flex flex-col gap-1.5 items-end">
-                                                                {isSelected && <div className="bg-white/20 p-1 rounded-full backdrop-blur-sm"><Icon name="check" size={16} className="text-white drop-shadow-sm" /></div>}
-                                                                {isOut && <span className="text-[9px] sm:text-[10px] font-black bg-slate-200 text-slate-500 px-1.5 py-0.5 rounded border border-slate-300">在外</span>}
-                                                                {isAbsent && <span className="text-[9px] sm:text-[10px] font-black bg-red-100 text-red-500 px-1.5 py-0.5 rounded border border-red-200">缺席</span>}
+                                                            <div className="absolute right-2.5 sm:right-3 lg:right-4 top-1/2 -translate-y-1/2 flex flex-col gap-1.5 lg:gap-2 items-end">
+                                                                {isSelected && <div className="bg-white/20 p-1.5 lg:p-2 rounded-full backdrop-blur-sm"><Icon name="check" size={16} className="text-white drop-shadow-sm lg:w-6 lg:h-6" /></div>}
+                                                                {isOut && <span className="text-[10px] sm:text-xs lg:text-sm font-black bg-slate-200 text-slate-500 px-1.5 py-0.5 lg:px-2.5 lg:py-1 rounded border border-slate-300">在外</span>}
+                                                                {isAbsent && <span className="text-[10px] sm:text-xs lg:text-sm font-black bg-red-100 text-red-500 px-1.5 py-0.5 lg:px-2.5 lg:py-1 rounded border border-red-200">缺席</span>}
                                                             </div>
                                                         </button>
                                                     );
@@ -627,30 +629,30 @@
 
                                         {/* 底部浮动栏：选择原因 */}
                                         {selectedOutStudents.length > 0 && (
-                                            <div className="absolute bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-white shadow-[0_-10px_40px_rgba(0,0,0,0.1)] z-30 animate-in slide-up rounded-b-2xl sm:rounded-[2rem] lg:rounded-bl-[2rem] lg:rounded-br-none p-4 sm:p-5">
-                                                <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6 max-w-5xl mx-auto w-full">
-                                                    <div className="flex items-center justify-between md:justify-start w-full md:w-auto gap-4 shrink-0">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-black text-xl sm:text-2xl w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-inner border border-blue-400">
+                                            <div className="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-white shadow-[0_-15px_50px_rgba(0,0,0,0.15)] z-30 animate-in slide-up rounded-b-2xl sm:rounded-[2rem] lg:rounded-bl-[2rem] lg:rounded-br-none p-4 sm:p-5 lg:p-8">
+                                                <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6 lg:gap-8 max-w-7xl mx-auto w-full">
+                                                    <div className="flex items-center justify-between md:justify-start w-full md:w-auto gap-4 lg:gap-6 shrink-0">
+                                                        <div className="flex items-center gap-3 lg:gap-5">
+                                                            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-black text-2xl sm:text-3xl lg:text-4xl w-14 h-14 sm:w-16 sm:h-16 lg:w-20 lg:h-20 rounded-2xl lg:rounded-3xl flex items-center justify-center shrink-0 shadow-inner border border-blue-400">
                                                                 {selectedOutStudents.length}
                                                             </div>
-                                                            <div className="text-slate-700 font-bold leading-tight text-sm sm:text-base">
+                                                            <div className="text-slate-700 font-bold leading-tight text-base sm:text-lg lg:text-2xl">
                                                                 去哪里？<br/>
-                                                                <span className="text-[10px] sm:text-xs text-slate-400 font-medium">Sila Pilih Sebab:</span>
+                                                                <span className="text-xs sm:text-sm lg:text-base text-slate-400 font-medium">Sila Pilih Sebab:</span>
                                                             </div>
                                                         </div>
-                                                        <button onClick={() => setSelectedOutStudents([])} className="md:hidden text-xs text-slate-500 font-bold bg-slate-100 px-4 py-2 rounded-xl">取消</button>
+                                                        <button onClick={() => setSelectedOutStudents([])} className="md:hidden text-xs lg:text-sm text-slate-500 font-bold bg-slate-100 px-4 py-2 rounded-xl">取消</button>
                                                     </div>
-                                                    <div className="h-12 w-px bg-slate-200 hidden md:block shrink-0"></div>
-                                                    <div className="flex-grow grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 w-full">
+                                                    <div className="h-16 lg:h-20 w-px bg-slate-200 hidden md:block shrink-0"></div>
+                                                    <div className="flex-grow grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 lg:gap-6 w-full">
                                                         {REASONS.map(reason => (
                                                             <button key={reason.id} onClick={() => handleConfirmExit(reason)} 
-                                                                className={`${reason.color} px-3 py-2.5 sm:px-4 sm:py-3.5 rounded-xl sm:rounded-2xl flex flex-row items-center justify-start gap-3 transition-all active:scale-95 border-b-4 hover:-translate-y-0.5`}
+                                                                className={`${reason.color} px-4 py-3 sm:px-5 sm:py-4 lg:px-6 lg:py-5 rounded-xl sm:rounded-2xl lg:rounded-3xl flex flex-row items-center justify-start gap-3 lg:gap-5 transition-all active:scale-95 border-b-4 lg:border-b-[6px] hover:-translate-y-1`}
                                                             >
-                                                                <span className="text-2xl sm:text-3xl shrink-0 drop-shadow-sm">{reason.icon}</span>
+                                                                <span className="text-3xl sm:text-4xl lg:text-5xl shrink-0 drop-shadow-sm">{reason.icon}</span>
                                                                 <div className="flex flex-col items-start text-left min-w-0">
-                                                                    <span className="font-bold text-xs sm:text-sm leading-tight truncate w-full">{reason.label}</span>
-                                                                    <span className="text-[9px] sm:text-[10px] opacity-70 font-medium truncate w-full mt-0.5">{reason.labelMy}</span>
+                                                                    <span className="font-bold text-sm sm:text-base lg:text-xl leading-tight truncate w-full">{reason.label}</span>
+                                                                    <span className="text-[10px] sm:text-xs lg:text-sm opacity-70 font-medium truncate w-full mt-1">{reason.labelMy}</span>
                                                                 </div>
                                                             </button>
                                                         ))}
@@ -662,41 +664,41 @@
                                 )}
                             </div>
 
-                            {/* 右侧：在外名单 (Ticket Style + 倒计时进度条) */}
-                            <div className={`lg:w-1/4 bg-white/70 backdrop-blur-md rounded-2xl sm:rounded-[2rem] border border-white shadow-sm p-4 sm:p-5 flex flex-col relative overflow-hidden h-[300px] sm:h-[400px] lg:h-auto shrink-0 flex-grow lg:flex-grow-0 ${mobileTab === 'in' ? 'flex' : 'hidden lg:flex'}`}>
-                                <div className="flex items-center justify-between mb-4 sm:mb-5 shrink-0 pb-3 border-b border-slate-200/60">
-                                    <h2 className="text-base sm:text-lg font-black text-slate-800 flex items-center gap-2 tracking-tight">
-                                        <span className="relative flex h-2.5 w-2.5">
+                            {/* 右侧：在外名单 */}
+                            <div className={`lg:w-1/4 bg-white/70 backdrop-blur-md rounded-2xl sm:rounded-[2rem] border border-white shadow-sm p-4 sm:p-5 lg:p-6 flex flex-col relative overflow-hidden h-[300px] sm:h-[400px] lg:h-auto shrink-0 flex-grow lg:flex-grow-0 ${mobileTab === 'in' ? 'flex' : 'hidden lg:flex'}`}>
+                                <div className="flex items-center justify-between mb-4 sm:mb-5 lg:mb-6 shrink-0 pb-3 lg:pb-4 border-b border-slate-200/60">
+                                    <h2 className="text-base sm:text-lg lg:text-2xl font-black text-slate-800 flex items-center gap-2 tracking-tight">
+                                        <span className="relative flex h-3 w-3 lg:h-4 lg:w-4">
                                             <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${activeLogs.length > 0 ? 'bg-red-400' : 'bg-emerald-400'}`}></span>
-                                            <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${activeLogs.length > 0 ? 'bg-red-500' : 'bg-emerald-500'}`}></span>
+                                            <span className={`relative inline-flex rounded-full h-3 w-3 lg:h-4 lg:w-4 ${activeLogs.length > 0 ? 'bg-red-500' : 'bg-emerald-500'}`}></span>
                                         </span>
-                                        在外名单 <span className="bg-slate-200/50 text-slate-500 px-2 py-0.5 rounded-md text-sm">{activeLogs.length}</span>
+                                        在外名单 <span className="bg-slate-200/50 text-slate-500 px-2 lg:px-3 py-0.5 lg:py-1 rounded-md lg:rounded-lg text-sm lg:text-lg">{activeLogs.length}</span>
                                     </h2>
                                     {activeLogs.length > 0 && (
                                         <button 
                                             onClick={() => {
                                                 setGlobalModal({ type: 'confirm', title: '一键归队', message: `确定要让目前在外的 ${activeLogs.length} 名学生全部归队吗？`, onConfirm: () => { const now = new Date(); const updatedLogs = logs.map(log => { if (log.classId === activeClassId && !log.timeIn) { const dur = Math.round((now - new Date(log.timeOut))/60000) + ' min'; const timeInStr = now.toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit', hour12:true}); syncToCloud({ action: 'log_in', id: log.id, timeIn: timeInStr, duration: dur }); return { ...log, timeIn: now.toISOString(), reasonDisplay: (log.reasonDisplay || log.reason) + ' (一键)' }; } return log; }); setLogs(updatedLogs); } });
                                             }}
-                                            className="text-[10px] sm:text-xs font-bold bg-white hover:bg-slate-50 text-slate-600 px-3 py-1.5 rounded-lg transition-all active:scale-95 shadow-sm border border-slate-200 flex items-center gap-1.5 hover:text-blue-600"
+                                            className="text-xs lg:text-sm font-bold bg-white hover:bg-slate-50 text-slate-600 px-3 py-2 lg:px-4 lg:py-2.5 rounded-lg lg:rounded-xl transition-all active:scale-95 shadow-sm border border-slate-200 flex items-center gap-1.5 hover:text-blue-600"
                                         >
-                                            <Icon name="users" size={12} /> 一键归队
+                                            <Icon name="users" size={16} className="lg:w-5 lg:h-5" /> 一键全归
                                         </button>
                                     )}
                                 </div>
 
-                                <div className="flex-grow overflow-y-auto space-y-3 pr-2 custom-scrollbar">
+                                <div className="flex-grow overflow-y-auto space-y-3 lg:space-y-4 pr-2 custom-scrollbar">
                                     {isLowAngleMode && activeLogs.length > 0 && (
-                                        <div className="h-[35vh] w-full flex items-end justify-center pb-4 shrink-0">
-                                            <div className="text-slate-400 font-bold text-xs bg-white/50 px-4 py-2 rounded-full flex items-center gap-1.5 opacity-80 border border-white/60">
-                                                <Icon name="arrow-up" size={14} className="animate-bounce" /> 向上滑动
+                                        <div className="h-[35vh] w-full flex items-end justify-center pb-6 shrink-0">
+                                            <div className="text-slate-400 font-bold text-xs lg:text-sm bg-white/50 px-5 py-2.5 lg:px-6 lg:py-3 rounded-full flex items-center gap-2 opacity-80 border border-white/60">
+                                                <Icon name="arrow-up" size={16} className="animate-bounce lg:w-5 lg:h-5" /> 向上滑动
                                             </div>
                                         </div>
                                     )}
                                     
                                     {activeLogs.length === 0 ? (
                                         <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-70 pb-10">
-                                            <div className="bg-emerald-50 text-emerald-500 p-4 rounded-full shadow-inner mb-3 border border-emerald-100"><Icon name="check" size={32} /></div>
-                                            <p className="text-sm sm:text-base font-bold text-slate-500">全员在班</p>
+                                            <div className="bg-emerald-50 text-emerald-500 p-5 lg:p-6 rounded-full shadow-inner mb-4 border border-emerald-100"><Icon name="check" size={40} className="lg:w-12 lg:h-12" /></div>
+                                            <p className="text-base lg:text-xl font-bold text-slate-500">全员在班</p>
                                         </div>
                                     ) : (
                                         activeLogs.map(log => {
@@ -704,10 +706,9 @@
                                             const displayReason = log.reasonDisplay || (reasonObj ? reasonObj.label : log.reason);
                                             const { cn, my } = parseName(log.name);
                                             
-                                            // 新增：计算进度条逻辑
                                             const durationMs = new Date() - new Date(log.timeOut);
                                             const elapsedMins = durationMs / 60000;
-                                            const maxTime = 15; // 15分钟基准线
+                                            const maxTime = 15;
                                             const progressPercent = Math.min((elapsedMins / maxTime) * 100, 100);
                                             const isOvertime = elapsedMins >= 15;
                                             
@@ -717,33 +718,33 @@
 
                                             return (
                                                 <div key={log.id} onClick={() => handleStudentReturn(log.id)}
-                                                    className={`relative border rounded-xl sm:rounded-2xl p-3 shadow-sm flex flex-col gap-2 transition-all cursor-pointer select-none group active:scale-95 overflow-hidden pb-4 ${
+                                                    className={`relative border rounded-xl sm:rounded-2xl lg:rounded-[1.5rem] p-3 lg:p-4 shadow-sm flex flex-col gap-2 transition-all cursor-pointer select-none group active:scale-95 overflow-hidden pb-4 lg:pb-5 ${
                                                         isOvertime ? 'bg-red-50/80 border-red-200' : 'bg-white border-white/80 hover:border-blue-300 hover:shadow-md'
                                                     }`}
                                                 >
-                                                    <div className="flex items-start gap-3 overflow-hidden z-10">
+                                                    <div className="flex items-center gap-3 lg:gap-4 overflow-hidden z-10">
                                                         <div className="relative shrink-0">
                                                             <UserAvatar name={log.name} size="sm" />
-                                                            <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 shadow-sm text-[10px] sm:text-xs border border-slate-100">{reasonObj?.icon || '❓'}</div>
+                                                            <div className="absolute -bottom-1.5 -right-1.5 bg-white rounded-full p-1 shadow-sm text-xs lg:text-sm border border-slate-100">{reasonObj?.icon || '❓'}</div>
                                                         </div>
-                                                        <div className="min-w-0 flex-grow pr-8">
-                                                            <div className={`font-black truncate leading-tight text-sm ${isOvertime ? 'text-red-700' : 'text-slate-800'}`}>
+                                                        <div className="min-w-0 flex-grow pr-8 lg:pr-10">
+                                                            <div className={`font-black truncate leading-tight text-sm lg:text-xl mb-1 ${isOvertime ? 'text-red-700' : 'text-slate-800'}`}>
                                                                 {cn || my || log.name}
                                                             </div>
-                                                            <div className="flex items-center justify-between text-[10px] sm:text-[11px] mt-1 text-slate-500 font-medium">
-                                                                <span className="truncate pr-1 bg-slate-100/50 px-1.5 py-0.5 rounded-md">{displayReason}</span>
-                                                                <span className={`${isOvertime ? 'text-red-600 font-bold bg-red-100/50 px-1.5 py-0.5 rounded' : 'font-mono'}`}>{formatTime(log.timeOut)}</span>
+                                                            <div className="flex items-center justify-between text-[11px] lg:text-sm text-slate-500 font-medium">
+                                                                <span className="truncate pr-2 bg-slate-100/50 px-2 py-0.5 lg:px-2.5 lg:py-1 rounded-md lg:rounded-lg">{displayReason}</span>
+                                                                <span className={`${isOvertime ? 'text-red-600 font-bold bg-red-100/50 px-2 py-0.5 rounded lg:rounded-md' : 'font-mono'}`}>{formatTime(log.timeOut)}</span>
                                                             </div>
                                                         </div>
                                                     </div>
                                                     
                                                     {/* Return button overlay */}
-                                                    <div className="bg-gradient-to-br from-emerald-400 to-teal-500 text-white p-2 rounded-xl opacity-0 group-hover:opacity-100 transition-all transform scale-90 group-hover:scale-100 shrink-0 absolute right-3 top-1/2 -translate-y-1/2 shadow-lg shadow-emerald-500/30 z-20">
-                                                        <Icon name="log-in" size={18} />
+                                                    <div className="bg-gradient-to-br from-emerald-400 to-teal-500 text-white p-2.5 lg:p-3 rounded-xl lg:rounded-2xl opacity-0 group-hover:opacity-100 transition-all transform scale-90 group-hover:scale-100 shrink-0 absolute right-3 lg:right-4 top-1/2 -translate-y-1/2 shadow-lg shadow-emerald-500/30 z-20">
+                                                        <Icon name="log-in" size={20} className="lg:w-6 lg:h-6" />
                                                     </div>
 
                                                     {/* 彩色倒计时进度条 */}
-                                                    <div className="absolute bottom-0 left-0 right-0 h-1 sm:h-1.5 bg-slate-100/50">
+                                                    <div className="absolute bottom-0 left-0 right-0 h-1.5 lg:h-2 bg-slate-100/50">
                                                         <div className={`h-full ${barColor} transition-all duration-1000 ease-linear rounded-r-full`} style={{ width: `${progressPercent}%` }}></div>
                                                     </div>
                                                 </div>
@@ -755,9 +756,9 @@
                         </div>
                         
                         {/* 底部导航栏 */}
-                        <div className="flex justify-center gap-3 sm:gap-6 shrink-0 pt-2 pb-2 sm:pb-0">
-                            <button onClick={() => setView('history')} className="glass-panel text-slate-600 text-sm sm:text-base font-bold flex items-center gap-2 px-5 py-2.5 sm:px-6 sm:py-3 rounded-full hover:bg-white hover:shadow-md hover:text-blue-600 transition-all active:scale-95"><Icon name="file-clock" size={18} /> 完整记录</button>
-                            <button onClick={() => setView('statistics')} className="glass-panel text-slate-600 text-sm sm:text-base font-bold flex items-center gap-2 px-5 py-2.5 sm:px-6 sm:py-3 rounded-full hover:bg-white hover:shadow-md hover:text-indigo-600 transition-all active:scale-95"><Icon name="bar-chart-3" size={18} /> 统计分析</button>
+                        <div className="flex justify-center gap-3 sm:gap-6 lg:gap-8 shrink-0 pt-2 pb-2 sm:pb-0">
+                            <button onClick={() => setView('history')} className="glass-panel text-slate-600 text-sm sm:text-base lg:text-lg font-bold flex items-center gap-2 px-5 py-2.5 sm:px-6 sm:py-3 lg:px-8 lg:py-4 rounded-full hover:bg-white hover:shadow-md hover:text-blue-600 transition-all active:scale-95"><Icon name="file-clock" size={20} className="lg:w-6 lg:h-6" /> 完整记录</button>
+                            <button onClick={() => setView('statistics')} className="glass-panel text-slate-600 text-sm sm:text-base lg:text-lg font-bold flex items-center gap-2 px-5 py-2.5 sm:px-6 sm:py-3 lg:px-8 lg:py-4 rounded-full hover:bg-white hover:shadow-md hover:text-indigo-600 transition-all active:scale-95"><Icon name="bar-chart-3" size={20} className="lg:w-6 lg:h-6" /> 统计分析</button>
                         </div>
                     </div>
                 );
@@ -936,7 +937,7 @@
             const renderAdmin = () => (
                 <div className="h-full flex flex-col animate-in fade-in duration-300">
                     <div className="glass-panel p-4 sm:p-5 flex justify-between items-center shrink-0 mb-4 rounded-2xl sm:rounded-[2rem] shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] border-white">
-                        <h2 className="text-lg sm:text-2xl font-black flex items-center gap-2 sm:gap-3 text-slate-800"><Icon name="settings" size={24} className="text-indigo-500" /> SJK(C) Ladang Grisek <span className="hidden sm:inline">| 系统管理</span></h2>
+                        <h2 className="text-lg sm:text-2xl font-black flex items-center gap-2 sm:gap-3 text-slate-800"><Icon name="settings" size={24} className="text-indigo-500" /> 新廊华小 <span className="hidden sm:inline">| 电子出入系统管理</span></h2>
                         <button onClick={() => setView('landing')} className="bg-white hover:bg-slate-50 border border-slate-200 px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm transition-all text-slate-600 active:scale-95">返回首页</button>
                     </div>
                     
